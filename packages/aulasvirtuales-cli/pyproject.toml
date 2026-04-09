@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68.0", "setuptools-scm>=8.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aulasvirtuales-cli"
+version = "0.1.0"
+description = "CLI tool to interact with UTN FRBA's Moodle virtual classrooms"
+requires-python = ">=3.11"
+license = "MIT"
+dependencies = [
+    "aulasvirtuales",
+    "typer>=0.9",
+    "rich>=13.0",
+    "prompt-toolkit>=3.0",
+]
+
+[project.scripts]
+aulasvirtuales = "aulasvirtuales_cli.app:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"aulasvirtuales_cli.resources" = ["*.txt", "*.png"]

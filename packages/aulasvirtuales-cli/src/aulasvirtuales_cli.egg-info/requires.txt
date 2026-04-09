@@ -1,0 +1,4 @@
+aulasvirtuales
+typer>=0.9
+rich>=13.0
+prompt-toolkit>=3.0

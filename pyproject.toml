@@ -1,0 +1,35 @@
+[project]
+name = "aulasvirtuales-toolkit"
+version = "0.1.0"
+description = "Toolkit to interact with UTN FRBA's Moodle virtual classrooms"
+requires-python = ">=3.11"
+license = "MIT"
+dependencies = [
+    "aulasvirtuales",
+    "aulasvirtuales-cli",
+    "aulasvirtuales-mcp",
+]
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv.sources]
+aulasvirtuales = { workspace = true }
+aulasvirtuales-cli = { workspace = true }
+aulasvirtuales-mcp = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "commitizen>=4.0",
+    "pre-commit>=4.0",
+]
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "0.1.0"
+tag_format = "v$version"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
