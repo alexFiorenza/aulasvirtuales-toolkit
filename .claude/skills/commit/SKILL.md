@@ -2,6 +2,8 @@
 name: commit
 description: Create a git commit using Conventional Commits format (commitizen)
 allowed-tools: Bash(git add:*), Bash(git status:*), Bash(git commit:*), Bash(git diff:*), Bash(git log:*)
+metadata:
+  internal: true
 ---
 
 ## Context
