@@ -20,6 +20,28 @@ MODULE_TYPE_LABELS = {
 }
 
 
+@dataclass
+class GradeItem:
+    name: str
+    grade: str
+    range: str
+    percentage: str
+    feedback: str
+
+
+@dataclass
+class SubmissionComment:
+    author: str
+    date: str
+    content: str
+
+
+@dataclass
+class AssignmentDetails:
+    grade: str
+    comments: list[SubmissionComment]
+
+
 class MoodleClient:
     def __init__(self, session_cookie: str) -> None:
         self._http = httpx.Client(
@@ -146,6 +168,99 @@ class MoodleClient:
             )
             for e in data.get("events", [])
         ]
+
+    def get_grades(self, course_id: int) -> list["GradeItem"]:
+        response = self._http.get(
+            f"/grade/report/user/index.php?id={course_id}", follow_redirects=True
+        )
+        html = response.text
+
+        tables = re.findall(
+            r'<table[^>]*class="[^"]*user-grade[^"]*"[^>]*>(.*?)</table>', html, re.DOTALL
+        )
+        if not tables:
+            return []
+
+        grades = []
+        rows = re.findall(r'<tr[^>]*>(.*?)</tr>', tables[0], re.DOTALL)
+        for row in rows:
+            cols = re.findall(r'<t[dh][^>]*>(.*?)</t[dh]>', row, re.DOTALL)
+            clean_cols = []
+            for c in cols:
+                clean = re.sub(r'<[^>]+>', ' ', c).strip()
+                clean = clean.replace('&ndash;', '-').replace('&nbsp;', '')
+                clean = re.sub(r'\s+', ' ', clean).strip()
+                clean_cols.append(clean)
+
+            if not clean_cols or not any(clean_cols):
+                continue
+            if clean_cols[0] == 'Ítem de calificación' or len(clean_cols) < 6:
+                continue
+
+            name = clean_cols[0]
+            grade = clean_cols[2] if len(clean_cols) > 2 else ""
+            if "Acciones" in grade:
+                grade = "-"
+            
+            grades.append(
+                GradeItem(
+                    name=name,
+                    grade=grade,
+                    range=clean_cols[3] if len(clean_cols) > 3 else "",
+                    percentage=clean_cols[4] if len(clean_cols) > 4 else "",
+                    feedback=clean_cols[5] if len(clean_cols) > 5 else "",
+                )
+            )
+        return grades
+
+    def get_assignment_details(self, assignment_cmid: int) -> "AssignmentDetails":
+        resp = self._http.get(f"/mod/assign/view.php?id={assignment_cmid}")
+        html = resp.text
+
+        grade_match = re.search(r'<th[^>]*>Calificación</th>(.*?)</td>', html, re.DOTALL | re.IGNORECASE)
+        grade_str = ""
+        if grade_match:
+            grade_str = re.sub(r'<[^>]+>', '', grade_match.group(1)).strip()
+            
+        details = AssignmentDetails(grade=grade_str, comments=[])
+
+        config_match = re.search(r'M\.core_comment\.init\([^,]+,\s*({[^}]+})\);', html)
+        if not config_match:
+            return details
+
+        try:
+            config = json.loads(config_match.group(1))
+            payload = {
+                "action": "get",
+                "client_id": config["client_id"],
+                "itemid": config["itemid"],
+                "area": config["commentarea"],
+                "courseid": config["courseid"],
+                "contextid": config["contextid"],
+                "component": config["component"],
+                "sesskey": self._sesskey
+            }
+            res = self._http.post("/comment/comment_ajax.php", data=payload)
+            data = res.json()
+
+            if "list" not in data:
+                return details
+
+            for c in data["list"]:
+                clean_content = re.sub(r'<[^>]+>', ' ', c.get("content", "")).strip()
+                clean_content = re.sub(r'\s+', ' ', clean_content)
+                details.comments.append(
+                    SubmissionComment(
+                        author=c.get("fullname", "Unknown"),
+                        date=c.get("time", ""),
+                        content=clean_content,
+                    )
+                )
+
+        except Exception as e:
+            pass  # Fail gracefully for comments if AJAX fails, keeping the parsed grade
+            
+        return details
 
 
 @dataclass

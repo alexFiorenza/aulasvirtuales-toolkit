@@ -75,6 +75,18 @@ aulasvirtuales events
 aulasvirtuales events 29595
 ```
 
+### `aulasvirtuales grades <course_id> [OPTIONS]`
+
+Shows the grading table and feedback for a course (like assignments, quizzes, and course totals).
+
+Options:
+- `--with-comments` — Iterates through assignments to extract specific text grades (e.g., "Entrega Muy bien") and fetches internal dynamic submission comments left by professors. Slower runtime due to additional HTTP requests.
+
+```bash
+aulasvirtuales grades 3641
+aulasvirtuales grades 3641 --with-comments
+```
+
 ### `aulasvirtuales forums <course_id>`
 
 Lists forums in a course. Output: ID, Name.
