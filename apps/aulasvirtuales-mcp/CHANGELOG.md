@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/alexFiorenza/aulasvirtuales-toolkit/compare/aulasvirtuales-mcp-v0.4.0...aulasvirtuales-mcp-v0.5.0) (2026-04-10)
+
+
+### Features
+
+* **mcp:** background OCR jobs with status polling and string param coercion ([8c4867d](https://github.com/alexFiorenza/aulasvirtuales-toolkit/commit/8c4867d7d0c41227c418dfdc87862d62738e29aa))
+
 ## [0.4.0](https://github.com/alexFiorenza/aulasvirtuales-toolkit/compare/aulasvirtuales-mcp-v0.3.0...aulasvirtuales-mcp-v0.4.0) (2026-04-10)
 
 
