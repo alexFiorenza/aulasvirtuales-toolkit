@@ -1,5 +1,8 @@
+import asyncio
 import os
-import tempfile
+import uuid
+from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from fastmcp import FastMCP
 from fastmcp.utilities.types import Image
@@ -10,6 +13,23 @@ from aulasvirtuales.downloader import download_file, get_resource_files, filenam
 from aulasvirtuales.config import get_download_dir, get_ocr_config
 
 mcp = FastMCP("AulasVirtuales")
+
+
+# ---------------------------------------------------------------------------
+# OCR job registry
+# ---------------------------------------------------------------------------
+
+@dataclass
+class OcrJob:
+    id: str
+    filename: str
+    current_page: int = 0
+    total_pages: int = 0
+    status: str = "pending"  # pending | processing | completed | failed
+    result_path: str | None = None
+    error: str | None = None
+
+_ocr_jobs: dict[str, OcrJob] = {}
 
 
 # ---------------------------------------------------------------------------
@@ -31,22 +51,22 @@ SUPPORTED_CONVERSIONS: dict[tuple[str, str], str] = {
 def _get_client() -> MoodleClient:
     username = os.environ.get("MOODLE_USERNAME")
     password = os.environ.get("MOODLE_PASSWORD")
-    
+
     token = get_token()
     if token and is_session_valid(token):
         return MoodleClient(token)
-    
+
     if username and password:
         token = login(username, password)
         save_token(token)
         return MoodleClient(token)
-        
+
     creds = get_credentials()
     if creds:
         token = login(creds[0], creds[1])
         save_token(token)
         return MoodleClient(token)
-        
+
     raise RuntimeError(
         "No Moodle credentials found. Please set MOODLE_USERNAME and "
         "MOODLE_PASSWORD environment variables, or run 'aulasvirtuales login' locally via CLI."
@@ -124,6 +144,7 @@ def _ocr_convert_file(
     provider: str,
     model: str,
     provider_kwargs: dict,
+    on_page: Callable[[int, int], None] | None = None,
 ) -> Path:
     """Convert a file using OCR via a vision LLM."""
     from aulasvirtuales.ocr import OCR_SUPPORTED_EXTENSIONS, ocr_and_save
@@ -139,7 +160,36 @@ def _ocr_convert_file(
         provider_config=provider_kwargs,
         output_format=output_format,
         output_dir=output_dir,
+        on_page=on_page,
     )
+
+
+async def _run_ocr_job(
+    job: OcrJob,
+    path: Path,
+    output_format: str,
+    output_dir: Path,
+    provider: str,
+    model: str,
+    provider_kwargs: dict,
+) -> None:
+    """Run OCR in a background thread and update the job registry."""
+    job.status = "processing"
+
+    def _on_page(current: int, total: int) -> None:
+        job.current_page = current
+        job.total_pages = total
+
+    try:
+        converted = await asyncio.to_thread(
+            _ocr_convert_file, path, output_format, output_dir,
+            provider, model, provider_kwargs, _on_page,
+        )
+        job.result_path = str(converted)
+        job.status = "completed"
+    except Exception as exc:
+        job.error = str(exc)
+        job.status = "failed"
 
 
 # ---------------------------------------------------------------------------
@@ -153,40 +203,41 @@ def get_courses():
     return client.get_courses()
 
 @mcp.tool()
-def get_course_resources(course_id: int):
+def get_course_resources(course_id: int | str):
     """List sections and resources of a course."""
     client = _get_client()
-    return client.get_course_contents(course_id)
+    return client.get_course_contents(int(course_id))
 
 @mcp.tool()
-def get_upcoming_events(course_id: int | None = None):
+def get_upcoming_events(course_id: int | str | None = None):
     """Show upcoming events for a specific course or across all courses."""
     client = _get_client()
-    return client.get_upcoming_events(course_id)
+    return client.get_upcoming_events(int(course_id) if course_id is not None else None)
 
 @mcp.tool()
-def get_grades(course_id: int):
+def get_grades(course_id: int | str):
     """Show grades and feedback for a course."""
     client = _get_client()
-    return client.get_grades(course_id)
+    return client.get_grades(int(course_id))
 
 @mcp.tool()
-def get_forums(course_id: int):
+def get_forums(course_id: int | str):
     """List forums in a course."""
     client = _get_client()
-    return client.get_forums(course_id)
+    return client.get_forums(int(course_id))
 
 @mcp.tool()
-def get_forum_discussions(forum_id: int, limit: int = 10):
+def get_forum_discussions(forum_id: int | str, limit: int | str = 10):
     """List discussions in a forum."""
     client = _get_client()
-    return client.get_forum_discussions(forum_id, limit)
+    return client.get_forum_discussions(int(forum_id), int(limit))
 
 @mcp.tool()
-def get_discussion_posts(discussion_id: int):
+def get_discussion_posts(discussion_id: int | str):
     """Show messages in a forum discussion."""
     client = _get_client()
-    return client.get_discussion_posts(discussion_id)
+    return client.get_discussion_posts(int(discussion_id))
+
 
 
 @mcp.tool()
@@ -252,13 +303,13 @@ def read_downloaded_file(filename: str | None = None) -> list[str | Image]:
 
 
 @mcp.tool()
-def download(
-    course_id: int,
-    resource_id: int,
+async def download(
+    course_id: int | str,
+    resource_id: int | str,
     output: str | None = None,
     to: str | None = None,
     file: str | None = None,
-    ocr: bool = False,
+    ocr: bool | str = False,
     ocr_provider: str | None = None,
     ocr_model: str | None = None,
 ) -> str:
@@ -278,7 +329,12 @@ def download(
 
     Returns:
         A summary of downloaded (and optionally converted) file paths.
+        When OCR is requested, the conversion runs in the background and the tool
+        returns immediately with a job ID. Use `ocr_status` to check progress.
     """
+    course_id, resource_id = int(course_id), int(resource_id)
+    ocr = ocr if isinstance(ocr, bool) else str(ocr).lower() in ("true", "1", "yes")
+
     # --- Validate OCR args early ---
     provider = model = ""
     provider_kwargs: dict = {}
@@ -343,8 +399,17 @@ def download(
         results.append(f"✓ Downloaded: {path}")
 
         if ocr and to:
-            converted = _ocr_convert_file(path, to, dest_dir, provider, model, provider_kwargs)
-            results.append(f"  ✓ OCR converted: {converted}")
+            job = OcrJob(id=uuid.uuid4().hex[:8], filename=path.name)
+            _ocr_jobs[job.id] = job
+
+            asyncio.create_task(
+                _run_ocr_job(job, path, to, dest_dir, provider, model, provider_kwargs)
+            )
+
+            results.append(
+                f"  ⏳ OCR started in background (job_id: {job.id}). "
+                f"Use ocr_status(job_id=\"{job.id}\") to check progress."
+            )
         elif to:
             converted = _convert_file(path, to, dest_dir)
             results.append(f"  ✓ Converted: {converted}")
@@ -353,7 +418,50 @@ def download(
 
 
 @mcp.tool()
-def clear_downloads(force: bool = False) -> str:
+def ocr_status(job_id: str | None = None) -> str:
+    """Check the status of a background OCR job.
+
+    Call without arguments to list all jobs, or pass a specific job_id
+    returned by the download tool.
+
+    Args:
+        job_id: The OCR job ID to check. If omitted, lists all jobs.
+
+    Returns:
+        Current status of the OCR job(s): processing page X/Y, completed
+        with the output file path, or error details.
+    """
+    if job_id is None:
+        if not _ocr_jobs:
+            return "No OCR jobs found."
+        lines = []
+        for job in _ocr_jobs.values():
+            lines.append(_format_job_status(job))
+        return "\n".join(lines)
+
+    job = _ocr_jobs.get(job_id)
+    if not job:
+        return f"OCR job '{job_id}' not found."
+    return _format_job_status(job)
+
+
+def _format_job_status(job: OcrJob) -> str:
+    """Format a single OCR job status as a human-readable string."""
+    if job.status == "pending":
+        return f"[{job.id}] {job.filename}: pending"
+    if job.status == "processing":
+        if job.total_pages > 0:
+            return f"[{job.id}] {job.filename}: processing page {job.current_page}/{job.total_pages}"
+        return f"[{job.id}] {job.filename}: processing..."
+    if job.status == "completed":
+        return f"[{job.id}] {job.filename}: ✓ completed → {job.result_path}"
+    if job.status == "failed":
+        return f"[{job.id}] {job.filename}: ✗ failed — {job.error}"
+    return f"[{job.id}] {job.filename}: {job.status}"
+
+
+@mcp.tool()
+def clear_downloads(force: bool | str = False) -> str:
     """Clear all downloaded files from the configured download directory.
 
     Use this after completing download tasks to free disk space.
@@ -365,6 +473,8 @@ def clear_downloads(force: bool = False) -> str:
         A message indicating success or that the directory was already empty.
     """
     import shutil
+
+    force = force if isinstance(force, bool) else str(force).lower() in ("true", "1", "yes")
 
     d_dir = get_download_dir()
 
@@ -389,4 +499,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
