@@ -2,7 +2,12 @@
   "packages": {
     ".": {
       "release-type": "python",
-      "component": "aulasvirtuales-toolkit"
+      "component": "aulasvirtuales-toolkit",
+      "exclude-paths": [
+        "*.md",
+        "**/*.md",
+        ".github/**"
+      ]
     },
     "packages/aulasvirtuales": {
       "release-type": "python",
