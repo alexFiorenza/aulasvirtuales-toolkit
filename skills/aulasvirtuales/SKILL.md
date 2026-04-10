@@ -11,6 +11,12 @@ A CLI tool to interact with UTN FRBA's Moodle platform. Installed as `aulasvirtu
 
 **Always run commands directly** (e.g. `aulasvirtuales courses`), never with `uv run`.
 
+## Core Agent Behaviors
+
+When interacting with this CLI on behalf of the user, you MUST follow these conversational rules:
+1. **Always Prompt OCR vs Manual Extraction**: Whenever you are asked to download and convert a document (like a PDF) to Markdown, explicitly ask the user *before downloading* if they prefer to use "vision LLM OCR" (`--ocr` flag parameters) or standard fast local parsing (`pymupdf4llm` via default `--to md`).
+2. **Offer to Clean Up**: Once your main task is fully completed and all demanded output has been delivered to the user, politely ask the user if they would like you to clear trailing temporary downloads by running `aulasvirtuales clear-downloads -y` so their disk doesn't fill up.
+
 ## Authentication
 
 - `aulasvirtuales login` — prompts for username/password, stores session in OS keychain

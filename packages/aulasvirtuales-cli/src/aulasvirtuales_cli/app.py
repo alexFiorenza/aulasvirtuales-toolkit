@@ -453,8 +453,7 @@ def clear_downloads(
     """Clear all downloaded files from the configured download directory."""
     import shutil
     
-    config = get_config()
-    d_dir = config.download_dir
+    d_dir = get_download_dir()
 
     if not d_dir.exists() or not any(d_dir.iterdir()):
         console.print(f"Directory [cyan]{d_dir}[/cyan] is already empty.", style="dim")
