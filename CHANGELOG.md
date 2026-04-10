@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/alexFiorenza/aulasvirtuales-toolkit/compare/aulasvirtuales-toolkit-v0.2.0...aulasvirtuales-toolkit-v0.2.1) (2026-04-10)
+
+
+### Documentation
+
+* add explicit repository url to homebrew tap command ([b2f22e9](https://github.com/alexFiorenza/aulasvirtuales-toolkit/commit/b2f22e9a1437d98e993dc6e80a5878194bfa5a74))
+* add homebrew installation instructions to readme ([54e676c](https://github.com/alexFiorenza/aulasvirtuales-toolkit/commit/54e676c1baa1822972f6fc701ad06c2c6adbdbe3))
+
 ## [0.2.0](https://github.com/alexFiorenza/aulasvirtuales-toolkit/compare/aulasvirtuales-toolkit-v0.1.0...aulasvirtuales-toolkit-v0.2.0) (2026-04-10)
 
 
