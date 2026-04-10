@@ -28,7 +28,7 @@ This teaches your agent how to use the `aulasvirtuales` CLI to interact with Moo
 Install the CLI globally using Homebrew. This automatically provisions the Python environment and isolated Playwright browsers without polluting your system.
 
 ```bash
-brew tap alexFiorenza/aulasvirtuales-toolkit
+brew tap alexFiorenza/aulasvirtuales-toolkit https://github.com/alexFiorenza/aulasvirtuales-toolkit
 brew install aulasvirtuales
 ```
 
