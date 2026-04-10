@@ -9,7 +9,7 @@ description = "CLI tool to interact with UTN FRBA's Moodle virtual classrooms"
 requires-python = ">=3.11"
 license = "MIT"
 dependencies = [
-    "aulasvirtuales",
+    "aulasvirtuales-core",
     "typer>=0.9",
     "rich>=13.0",
     "prompt-toolkit>=3.0",
