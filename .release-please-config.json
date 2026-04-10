@@ -1,23 +1,10 @@
 {
   "packages": {
-    ".": {
-      "release-type": "python",
-      "component": "aulasvirtuales-toolkit",
-      "exclude-paths": [
-        "*.md",
-        "**/*.md",
-        ".github/**"
-      ]
-    },
-    "packages/aulasvirtuales": {
-      "release-type": "python",
-      "component": "aulasvirtuales"
-    },
-    "packages/aulasvirtuales-cli": {
+    "apps/aulasvirtuales-cli": {
       "release-type": "python",
       "component": "aulasvirtuales-cli"
     },
-    "packages/aulasvirtuales-mcp": {
+    "apps/aulasvirtuales-mcp": {
       "release-type": "python",
       "component": "aulasvirtuales-mcp"
     }

@@ -5,19 +5,19 @@ description = "Toolkit to interact with UTN FRBA's Moodle virtual classrooms"
 requires-python = ">=3.11"
 license = "MIT"
 dependencies = [
-    "aulasvirtuales",
+    "aulasvirtuales-core",
     "aulasvirtuales-cli",
     "aulasvirtuales-mcp",
 ]
 
 [project.optional-dependencies]
-ocr = ["aulasvirtuales[ocr]"]
+ocr = ["aulasvirtuales-core[ocr]"]
 
 [tool.uv.workspace]
-members = ["packages/*"]
+members = ["packages/*", "apps/*"]
 
 [tool.uv.sources]
-aulasvirtuales = { workspace = true }
+aulasvirtuales-core = { workspace = true }
 aulasvirtuales-cli = { workspace = true }
 aulasvirtuales-mcp = { workspace = true }
 
