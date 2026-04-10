@@ -12,7 +12,7 @@ class Aulasvirtuales < Formula
     system "python3", "-m", "venv", libexec
 
     # We navigate to the extracted repo and install the base library and CLI manually
-    system libexec/"bin/pip", "install", "./packages/core"
+    system libexec/"bin/pip", "install", "./packages/core[ocr]"
     system libexec/"bin/pip", "install", "./apps/aulasvirtuales-cli"
 
     # Create a wrapper executable that injects the PLAYWRIGHT_BROWSERS_PATH environment variable at runtime.
