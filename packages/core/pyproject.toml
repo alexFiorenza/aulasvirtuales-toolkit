@@ -3,7 +3,7 @@ requires = ["setuptools>=68.0", "setuptools-scm>=8.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "aulasvirtuales"
+name = "aulasvirtuales-core"
 version = "0.2.0"
 description = "Core library to interact with UTN FRBA's Moodle virtual classrooms"
 requires-python = ">=3.11"
