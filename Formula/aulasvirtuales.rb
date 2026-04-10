@@ -7,6 +7,10 @@ class Aulasvirtuales < Formula
 
   depends_on "python@3.12"
 
+  # Prevent Homebrew from relocating pre-compiled Chromium dylibs whose headers
+  # are too small for the rewritten install names.
+  skip_clean "share/playwright-browsers"
+
   def install
     # Create an isolated Python virtual environment
     system "python3", "-m", "venv", libexec
