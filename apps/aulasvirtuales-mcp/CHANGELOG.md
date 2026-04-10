@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/alexFiorenza/aulasvirtuales-toolkit/compare/aulasvirtuales-mcp-v0.3.0...aulasvirtuales-mcp-v0.4.0) (2026-04-10)
+
+
+### Features
+
+* **mcp:** add download, read_downloaded_file, and clear_downloads tools ([36add0f](https://github.com/alexFiorenza/aulasvirtuales-toolkit/commit/36add0f58782b64264692dfec5918c1d5aa4e6fa))
+
 ## [0.3.0](https://github.com/alexFiorenza/aulasvirtuales-toolkit/compare/aulasvirtuales-mcp-v0.2.1...aulasvirtuales-mcp-v0.3.0) (2026-04-10)
 
 
