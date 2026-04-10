@@ -1,6 +1,6 @@
 [project]
 name = "aulasvirtuales-toolkit"
-version = "0.2.1"
+version = "0.2.2"
 description = "Toolkit to interact with UTN FRBA's Moodle virtual classrooms"
 requires-python = ">=3.11"
 license = "MIT"

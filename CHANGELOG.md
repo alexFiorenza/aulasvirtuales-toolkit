@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/alexFiorenza/aulasvirtuales-toolkit/compare/aulasvirtuales-toolkit-v0.2.1...aulasvirtuales-toolkit-v0.2.2) (2026-04-10)
+
+
+### Bug Fixes
+
+* **brew:** move playwright downloads to share to avoid linkage crash ([534791e](https://github.com/alexFiorenza/aulasvirtuales-toolkit/commit/534791e05f288d3207f72502bf3d298b93ebb4f5))
+
 ## [0.2.1](https://github.com/alexFiorenza/aulasvirtuales-toolkit/compare/aulasvirtuales-toolkit-v0.2.0...aulasvirtuales-toolkit-v0.2.1) (2026-04-10)
 
 
