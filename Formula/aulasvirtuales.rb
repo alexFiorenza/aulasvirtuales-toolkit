@@ -15,13 +15,15 @@ class Aulasvirtuales < Formula
     system libexec/"bin/pip", "install", "./packages/aulasvirtuales"
     system libexec/"bin/pip", "install", "./packages/aulasvirtuales-cli"
     
-    # Isolate Playwright browsers inside the formula's libexec directory to prevent ~/.cache pollution
-    ENV["PLAYWRIGHT_BROWSERS_PATH"] = libexec/"playwright-browsers"
+    # Isolate Playwright browsers inside the formula's share directory to prevent ~/.cache pollution.
+    # Placing it in `share` instead of `libexec` prevents Homebrew's linkage checker from crashing 
+    # on pre-compiled Chromium binaries which have small headers.
+    ENV["PLAYWRIGHT_BROWSERS_PATH"] = share/"playwright-browsers"
     system libexec/"bin/playwright", "install", "chromium"
     
     # Create a wrapper executable that injects the PLAYWRIGHT_BROWSERS_PATH environment variable at runtime
     (bin/"aulasvirtuales").write_env_script libexec/"bin/aulasvirtuales", 
-      PLAYWRIGHT_BROWSERS_PATH: libexec/"playwright-browsers"
+      PLAYWRIGHT_BROWSERS_PATH: share/"playwright-browsers"
   end
 
   test do
