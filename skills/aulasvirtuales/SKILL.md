@@ -17,6 +17,7 @@ When interacting with this MCP server on behalf of the user, you MUST follow the
 
 1. **Always Prompt OCR vs Native Extraction**: Whenever the user wants to download and convert a document to Markdown, explicitly ask them *before downloading* if they prefer to use "vision LLM OCR" (`ocr=true` with `ocr_provider`/`ocr_model` parameters) or standard fast local parsing (native `to="md"` via `pymupdf4llm`). Do NOT assume one or the other.
 2. **Offer to Clean Up Downloads**: Once your main task is fully completed and all demanded output has been delivered to the user, politely ask if they would like you to clear temporary downloads from the download directory so their disk doesn't fill up. If they agree, call `clear_downloads(force=true)`.
+3. **Do NOT Rapid-Poll OCR Status**: OCR jobs process each page through a vision LLM and take a long time. After starting an OCR job, wait **at least 30 seconds** before the first status check, and **at least 20 seconds** between subsequent checks. Always tell the user the current progress when you check (e.g. "processing page 3/10") instead of silently polling. Do not call `ocr_status` more than once per message turn.
 
 ## Available MCP Tools
 
@@ -56,6 +57,8 @@ Reads a file from the local downloads directory (`~/aulasvirtuales` by default).
 
 Full-featured download tool, equivalent to the CLI's `aulasvirtuales download` command. Supports format conversion and OCR.
 
+When `ocr=true`, the download completes immediately and the OCR conversion runs **in the background**. The tool returns a `job_id` that you must poll with `ocr_status` until it completes.
+
 **Parameters:**
 
 - `course_id` (int) — The Moodle course ID.
@@ -66,6 +69,17 @@ Full-featured download tool, equivalent to the CLI's `aulasvirtuales download` c
 - `ocr` (bool, optional) — Use a vision LLM for OCR instead of native parsing. Defaults output to `md` if `to` is not set.
 - `ocr_provider` (str, optional) — OCR provider override (`ollama`, `openrouter`). Falls back to CLI config.
 - `ocr_model` (str, optional) — OCR model name override. Falls back to CLI config.
+
+### `ocr_status(job_id?)`
+
+Checks the status of a background OCR job. Call without arguments to list all jobs, or pass a specific `job_id` returned by `download`.
+
+**Returns one of:**
+
+- `pending` — Job is queued but hasn't started yet.
+- `processing page X/Y` — OCR is in progress, shows current page.
+- `✓ completed → /path/to/file.md` — Done. The output file is ready to read with `read_downloaded_file`.
+- `✗ failed — error message` — Something went wrong.
 
 ### `clear_downloads(force?)`
 
@@ -87,11 +101,15 @@ Clears all downloaded files from the configured download directory (`~/aulasvirt
 1. Call `get_courses` to find the course ID
 2. Call `get_course_resources(course_id)` to find the resource ID
 3. **Ask the user** if they prefer OCR or native parsing for markdown conversion
-4. Call `download(course_id, resource_id, to="md")` for native conversion
-   — OR call `download(course_id, resource_id, ocr=true, ocr_provider="ollama", ocr_model="llava")` for OCR
-5. Call `read_downloaded_file("filename.md")` to read the converted file
-6. Deliver the content or pass it to another MCP (e.g. Obsidian)
-7. **Ask the user** if they want to clean up downloads, and if yes call `clear_downloads(force=true)`
+4. **Native conversion:** Call `download(course_id, resource_id, to="md")` — synchronous, result is immediate
+5. **OCR conversion:**
+   a. Call `download(course_id, resource_id, ocr=true)` — returns immediately with a `job_id`
+   b. **Wait before polling**: OCR processes each page through a vision LLM, which takes significant time. Do NOT poll immediately or in rapid succession. Wait **at least 30 seconds** before the first `ocr_status` check, and **at least 20 seconds** between subsequent checks. Inform the user that OCR is running and you'll check back shortly — do not silently poll in a loop.
+   c. Call `ocr_status(job_id)` — if still `processing`, tell the user the current progress (e.g. "page 3/10") and wait another 20–30 seconds before checking again.
+   d. Once the status is `completed` or `failed`, proceed accordingly.
+6. Call `read_downloaded_file("filename.md")` to read the converted file
+7. Deliver the content or pass it to another MCP (e.g. Obsidian)
+8. **Ask the user** if they want to clean up downloads, and if yes call `clear_downloads(force=true)`
 
 ### Check deadlines
 
