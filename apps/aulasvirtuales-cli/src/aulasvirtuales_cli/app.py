@@ -4,6 +4,8 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from aulasvirtuales_cli import __version__
+
 from aulasvirtuales.auth import (
     delete_credentials,
     delete_token,
@@ -29,8 +31,17 @@ app = typer.Typer(name="aulasvirtuales")
 console = Console()
 
 
+def _version_callback(value: bool) -> None:
+    if value:
+        console.print(f"aulasvirtuales {__version__}")
+        raise typer.Exit()
+
+
 @app.callback(invoke_without_command=True)
-def main(ctx: typer.Context) -> None:
+def main(
+    ctx: typer.Context,
+    version: bool = typer.Option(False, "--version", "-v", callback=_version_callback, is_eager=True, help="Show version and exit"),
+) -> None:
     if ctx.invoked_subcommand is None:
         from aulasvirtuales_cli.repl import start_repl
         start_repl(app)
