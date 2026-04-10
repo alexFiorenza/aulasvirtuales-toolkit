@@ -1,2 +1,0 @@
-[console_scripts]
-aulasvirtuales = aulasvirtuales_cli.app:app
