@@ -30,19 +30,26 @@ This installs two skills:
 
 The MCP server exposes Moodle functionality as tools for AI agents. It can be used with any MCP-compatible client.
 
-### Running the MCP server
+### Setup
+
+Clone the repo and install dependencies:
 
 ```bash
-aulasvirtuales-mcp
+git clone https://github.com/alexFiorenza/aulasvirtuales-toolkit.git
+cd aulasvirtuales-toolkit
+uv venv && source .venv/bin/activate
+uv sync --all-extras
+playwright install chromium
 ```
 
-Or configure it in your MCP client (e.g. Claude Desktop, Cursor) as a stdio server:
+Then configure it in your MCP client (e.g. Claude Desktop, Cursor) as a stdio server:
 
 ```json
 {
   "mcpServers": {
     "aulasvirtuales": {
-      "command": "aulasvirtuales-mcp",
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/aulasvirtuales-toolkit", "aulasvirtuales-mcp"],
       "env": {
         "MOODLE_USERNAME": "your_username",
         "MOODLE_PASSWORD": "your_password"
@@ -53,6 +60,8 @@ Or configure it in your MCP client (e.g. Claude Desktop, Cursor) as a stdio serv
 ```
 
 > Credentials can also be provided via the OS keychain (set up with `aulasvirtuales login` from the CLI).
+
+<!-- TODO: Once published to PyPI, users will be able to run `uvx aulasvirtuales-mcp` directly without cloning. -->
 
 ### Available MCP tools
 
