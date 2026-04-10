@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/alexFiorenza/aulasvirtuales-toolkit/compare/aulasvirtuales-cli-v0.2.1...aulasvirtuales-cli-v0.3.0) (2026-04-10)
+
+
+### Features
+
+* **cli:** add --version flag ([55fa8dd](https://github.com/alexFiorenza/aulasvirtuales-toolkit/commit/55fa8dd3e25cb4ca6418ec8950ad3806b6e7e6cf))
+
 ## [0.2.0](https://github.com/alexFiorenza/aulasvirtuales-toolkit/compare/aulasvirtuales-cli-v0.1.0...aulasvirtuales-cli-v0.2.0) (2026-04-10)
 
 
