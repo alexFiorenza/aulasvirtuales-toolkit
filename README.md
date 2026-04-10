@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="packages/aulasvirtuales-cli/src/aulasvirtuales_cli/resources/logo.png" alt="Aulas Virtuales" width="200">
+  <img src="apps/aulasvirtuales-cli/src/aulasvirtuales_cli/resources/logo.png" alt="Aulas Virtuales" width="200">
 </p>
 
 <h1 align="center">aulasvirtuales-toolkit</h1>
