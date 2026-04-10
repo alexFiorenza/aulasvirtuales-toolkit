@@ -66,6 +66,19 @@ aulasvirtuales download-all 3641
 aulasvirtuales download-all 3641 --to pdf -o ~/study/math
 ```
 
+### `aulasvirtuales clear-downloads [OPTIONS]`
+
+Clears all downloaded files from the configured default download directory.
+
+Options:
+
+- `--force, -y` — Skipt the explicit confirmation prompt.
+
+```bash
+aulasvirtuales clear-downloads
+aulasvirtuales clear-downloads -y
+```
+
 ### `aulasvirtuales events [course_id]`
 
 Shows upcoming events and deadlines. Omit course_id for all courses.
@@ -80,6 +93,7 @@ aulasvirtuales events 29595
 Shows the grading table and feedback for a course (like assignments, quizzes, and course totals).
 
 Options:
+
 - `--with-comments` — Iterates through assignments to extract specific text grades (e.g., "Entrega Muy bien") and fetches internal dynamic submission comments left by professors. Slower runtime due to additional HTTP requests.
 
 ```bash

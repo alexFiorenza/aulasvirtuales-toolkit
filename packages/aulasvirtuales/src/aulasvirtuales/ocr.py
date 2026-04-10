@@ -68,7 +68,7 @@ def _pdf_to_images(pdf_path: Path) -> list[bytes]:
     doc = fitz.open(str(pdf_path))
     images = []
     for page in doc:
-        pix = page.get_pixmap(dpi=200)
+        pix = page.get_pixmap(dpi=150)
         images.append(pix.tobytes("png"))
     doc.close()
     return images

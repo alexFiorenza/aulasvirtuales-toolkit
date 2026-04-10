@@ -147,6 +147,11 @@ dependencies = [
     { name = "aulasvirtuales-mcp" },
 ]
 
+[package.optional-dependencies]
+ocr = [
+    { name = "aulasvirtuales", extra = ["ocr"] },
+]
+
 [package.dev-dependencies]
 dev = [
     { name = "commitizen" },
@@ -158,9 +163,11 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "aulasvirtuales", editable = "packages/aulasvirtuales" },
+    { name = "aulasvirtuales", extras = ["ocr"], marker = "extra == 'ocr'", editable = "packages/aulasvirtuales" },
     { name = "aulasvirtuales-cli", editable = "packages/aulasvirtuales-cli" },
     { name = "aulasvirtuales-mcp", editable = "packages/aulasvirtuales-mcp" },
 ]
+provides-extras = ["ocr"]
 
 [package.metadata.requires-dev]
 dev = [

@@ -156,8 +156,13 @@ def _ocr_convert_file(
         raise typer.Exit(1)
 
     with console.status("") as status:
+        state = {"total": 0}
+
         def on_page(current: int, total: int) -> None:
-            status.update(f"  [cyan]OCR page {current}/{total}...[/cyan]")
+            state["total"] = total
+            if current > 1:
+                console.print(f"    [dim]✓ OCR completed for page {current - 1}/{total}[/dim]")
+            status.update(f"  [cyan]Processing OCR page {current}/{total}...[/cyan]")
 
         result = ocr_and_save(
             path, provider, model,
@@ -166,6 +171,9 @@ def _ocr_convert_file(
             output_dir=output_dir,
             on_page=on_page,
         )
+
+        if state["total"] > 0:
+            console.print(f"    [dim]✓ OCR completed for page {state['total']}/{state['total']}[/dim]")
 
     ext_label = "markdown" if output_format == "md" else "text"
     console.print(f"  [green]✓[/green] {result.name} ({ext_label}, ocr)")
@@ -436,6 +444,34 @@ def download_all(
                 _convert_file(path, to, dest)
 
     console.print("\n[bold green]Download complete.[/bold green]")
+
+
+@app.command(name="clear-downloads")
+def clear_downloads(
+    force: bool = typer.Option(False, "--force", "-y", help="Skip confirmation prompt"),
+) -> None:
+    """Clear all downloaded files from the configured download directory."""
+    import shutil
+    
+    config = get_config()
+    d_dir = config.download_dir
+
+    if not d_dir.exists() or not any(d_dir.iterdir()):
+        console.print(f"Directory [cyan]{d_dir}[/cyan] is already empty.", style="dim")
+        raise typer.Exit()
+
+    if not force:
+        confirm = typer.confirm(f"Are you sure you want to delete ALL files in {d_dir}?")
+        if not confirm:
+            console.print("Cancelled.")
+            raise typer.Exit()
+
+    try:
+        shutil.rmtree(d_dir)
+        d_dir.mkdir(parents=True, exist_ok=True)
+        console.print(f"  [green]✓[/green] Successfully cleared {d_dir}")
+    except Exception as e:
+        console.print(f"Failed to clear downloads directory: {e}", style="red")
 
 
 @app.command()
