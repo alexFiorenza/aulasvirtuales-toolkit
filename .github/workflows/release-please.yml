@@ -31,7 +31,7 @@ jobs:
         if: ${{ steps.release.outputs['packages/aulasvirtuales-cli--release_created'] }}
         run: |
           VERSION="${{ steps.release.outputs['packages/aulasvirtuales-cli--version'] }}"
-          TARBALL_URL="https://github.com/${{ github.repository }}/archive/refs/tags/packages/aulasvirtuales-cli-v${VERSION}.tar.gz"
+          TARBALL_URL="https://github.com/${{ github.repository }}/archive/refs/tags/aulasvirtuales-cli-v${VERSION}.tar.gz"
           
           # Download tarball to compute SHA256
           curl -sL $TARBALL_URL -o source.tar.gz

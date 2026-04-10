@@ -1,7 +1,7 @@
 class Aulasvirtuales < Formula
   desc "Toolkit to interact with UTN FRBA's Moodle virtual classrooms"
   homepage "https://github.com/alexFiorenza/aulasvirtuales-toolkit"
-  url "https://github.com/alexFiorenza/aulasvirtuales-toolkit/archive/refs/tags/packages/aulasvirtuales-cli-v0.2.0.tar.gz"
+  url "https://github.com/alexFiorenza/aulasvirtuales-toolkit/archive/refs/tags/aulasvirtuales-cli-v0.2.0.tar.gz"
   sha256 "d5558cd419c8d46bdc958064cb97f963d1ea793866414c025906ec15033512ed"
   version "0.2.0"
 
