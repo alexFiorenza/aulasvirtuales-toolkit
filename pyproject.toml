@@ -29,10 +29,5 @@ dev = [
     "pre-commit>=4.0",
 ]
 
-[tool.commitizen]
-name = "cz_conventional_commits"
-version = "0.1.0"
-tag_format = "v$version"
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -1,0 +1,20 @@
+{
+  "packages": {
+    ".": {
+      "release-type": "python",
+      "component": "aulasvirtuales-toolkit"
+    },
+    "packages/aulasvirtuales": {
+      "release-type": "python",
+      "component": "aulasvirtuales"
+    },
+    "packages/aulasvirtuales-cli": {
+      "release-type": "python",
+      "component": "aulasvirtuales-cli"
+    },
+    "packages/aulasvirtuales-mcp": {
+      "release-type": "python",
+      "component": "aulasvirtuales-mcp"
+    }
+  }
+}
