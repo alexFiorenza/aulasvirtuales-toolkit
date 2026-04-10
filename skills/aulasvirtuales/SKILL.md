@@ -11,6 +11,13 @@ Interact with UTN FRBA's Moodle platform through the AulasVirtuales MCP server t
 
 Authentication is handled automatically via stored credentials in the OS keychain (set up with `aulasvirtuales login` from the CLI) or via `MOODLE_USERNAME` / `MOODLE_PASSWORD` environment variables.
 
+## Core Agent Behaviors
+
+When interacting with this MCP server on behalf of the user, you MUST follow these conversational rules:
+
+1. **Always Prompt OCR vs Native Extraction**: Whenever the user wants to download and convert a document to Markdown, explicitly ask them *before downloading* if they prefer to use "vision LLM OCR" (`ocr=true` with `ocr_provider`/`ocr_model` parameters) or standard fast local parsing (native `to="md"` via `pymupdf4llm`). Do NOT assume one or the other.
+2. **Offer to Clean Up Downloads**: Once your main task is fully completed and all demanded output has been delivered to the user, politely ask if they would like you to clear temporary downloads from the download directory so their disk doesn't fill up. If they agree, call `clear_downloads(force=true)`.
+
 ## Available MCP Tools
 
 ### `get_courses`
@@ -41,13 +48,32 @@ Lists discussion threads in a forum. Default limit is 10.
 
 Shows all messages in a forum discussion thread, including author, date, subject, and content.
 
-### `download_resource_to_disk(course_id, resource_id)`
+### `read_downloaded_file(filename?)`
 
-Downloads a resource (File or Folder) to the local disk at the configured download directory (`~/aulasvirtuales` by default). Use this when the user wants to keep the file on disk.
+Reads a file from the local downloads directory (`~/aulasvirtuales` by default). If no filename is given, lists all available files. Text files are returned as text, PDFs as extracted text, and images as image content. Use this after `download` to read a converted file and pass its content to other tools or MCP servers (e.g. saving to Obsidian).
 
-### `read_resource_content(course_id, resource_id)`
+### `download(course_id, resource_id, output?, to?, file?, ocr?, ocr_provider?, ocr_model?)`
 
-Downloads a resource temporarily and extracts its text/markdown content, then returns it directly. The file is not persisted on disk. Use this when you need to read the content of a document (PDF, DOCX, PPTX, TXT, etc.) to answer questions or summarize it for the user.
+Full-featured download tool, equivalent to the CLI's `aulasvirtuales download` command. Supports format conversion and OCR.
+
+**Parameters:**
+
+- `course_id` (int) — The Moodle course ID.
+- `resource_id` (int) — The resource ID (File or Folder).
+- `output` (str, optional) — Destination directory or file path. Defaults to `~/aulasvirtuales`.
+- `to` (str, optional) — Convert after download. Supported: `pdf`, `md`, `txt`. Conversion chains: `.docx`→`pdf`, `.docx`→`md`, `.pdf`→`md`, `.pptx`→`pdf`, `.pptx`→`md`.
+- `file` (str, optional) — Filter: only download files whose name contains this substring (case-insensitive).
+- `ocr` (bool, optional) — Use a vision LLM for OCR instead of native parsing. Defaults output to `md` if `to` is not set.
+- `ocr_provider` (str, optional) — OCR provider override (`ollama`, `openrouter`). Falls back to CLI config.
+- `ocr_model` (str, optional) — OCR model name override. Falls back to CLI config.
+
+### `clear_downloads(force?)`
+
+Clears all downloaded files from the configured download directory (`~/aulasvirtuales` by default). Use this to free disk space after completing download tasks.
+
+**Parameters:**
+
+- `force` (bool, optional) — If true, deletes immediately without confirmation. Default is false (returns a confirmation prompt message).
 
 ## Typical Workflows
 
@@ -55,7 +81,17 @@ Downloads a resource temporarily and extracts its text/markdown content, then re
 
 1. Call `get_courses` to find the course ID
 2. Call `get_course_resources(course_id)` to see available materials
-3. Call `read_resource_content(course_id, resource_id)` to read a specific document
+
+### Download, convert, and read a document
+
+1. Call `get_courses` to find the course ID
+2. Call `get_course_resources(course_id)` to find the resource ID
+3. **Ask the user** if they prefer OCR or native parsing for markdown conversion
+4. Call `download(course_id, resource_id, to="md")` for native conversion
+   — OR call `download(course_id, resource_id, ocr=true, ocr_provider="ollama", ocr_model="llava")` for OCR
+5. Call `read_downloaded_file("filename.md")` to read the converted file
+6. Deliver the content or pass it to another MCP (e.g. Obsidian)
+7. **Ask the user** if they want to clean up downloads, and if yes call `clear_downloads(force=true)`
 
 ### Check deadlines
 
@@ -75,7 +111,8 @@ Downloads a resource temporarily and extracts its text/markdown content, then re
 ## Important Notes
 
 - All IDs are integers returned by previous tool calls.
-- Use `read_resource_content` when you need to read/summarize a document for the user. Use `download_resource_to_disk` when the user wants the file saved locally.
+- Use `download` to save files to disk (with optional conversion/OCR). Use `read_downloaded_file` to read those files and get their content.
+- `download` supports conversion (`to`), file filtering (`file`), OCR, and custom output paths.
 - Only File, Folder, and Assignment resources can be read/downloaded. Other types (Quiz, Link, etc.) cannot.
 - If authentication fails, tell the user to run `aulasvirtuales login` from the CLI to set up credentials, or set `MOODLE_USERNAME` and `MOODLE_PASSWORD` environment variables.
-- For advanced features like file conversion with `--to`, OCR, or bulk downloads, use the `/aulasvirtuales-cli` skill instead.
+- OCR requires the `ocr` extra to be installed (`uv sync --extra ocr`) and a provider/model configured via `aulasvirtuales config` or passed directly as parameters.
