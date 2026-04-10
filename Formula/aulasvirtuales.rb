@@ -7,18 +7,15 @@ class Aulasvirtuales < Formula
 
   depends_on "python@3.12"
 
-  # Prevent Homebrew's dylib relocation phase from touching native extensions
-  # inside the virtualenv (orjson, playwright, etc.) whose Mach-O headers
-  # are too small for the rewritten install names.
-  skip_clean "libexec"
-
   def install
     # Create an isolated Python virtual environment
     system "python3", "-m", "venv", libexec
 
-    # We navigate to the extracted repo and install the base library and CLI manually
-    system libexec/"bin/pip", "install", "./packages/core[ocr]"
-    system libexec/"bin/pip", "install", "./apps/aulasvirtuales-cli"
+    # Copy source packages into the prefix so post_install can pip-install them.
+    # pip install must happen in post_install to avoid Homebrew's dylib relocation
+    # phase, which fails on native extensions (orjson, playwright) whose Mach-O
+    # headers are too small for the rewritten install names.
+    (libexec/"src").install "packages", "apps"
 
     # Create a wrapper executable that injects the PLAYWRIGHT_BROWSERS_PATH environment variable at runtime.
     (bin/"aulasvirtuales").write_env_script libexec/"bin/aulasvirtuales",
@@ -26,6 +23,10 @@ class Aulasvirtuales < Formula
   end
 
   def post_install
+    system libexec/"bin/pip", "install", "#{libexec}/src/packages/core[ocr]"
+    system libexec/"bin/pip", "install", "#{libexec}/src/apps/aulasvirtuales-cli"
+    rm_rf libexec/"src"
+
     ENV["PLAYWRIGHT_BROWSERS_PATH"] = share/"playwright-browsers"
     system libexec/"bin/playwright", "install", "chromium"
   end
