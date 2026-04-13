@@ -25,9 +25,16 @@ aulasvirtuales-mcp = { workspace = true }
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
+    "pytest-mock>=3.12",
+    "respx>=0.22",
     "commitizen>=4.0",
     "pre-commit>=4.0",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "unit: Unit tests (no external dependencies)",
+    "integration: Integration tests (mocked external services)",
+]
+asyncio_mode = "auto"
