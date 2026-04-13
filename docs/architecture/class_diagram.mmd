@@ -125,7 +125,7 @@ classDiagram
         +id: int
         +name: str
         +module: str
-        +url: str|None
+        +url: str | None
         +type_label: str
     }
 
@@ -324,21 +324,180 @@ classDiagram
     %% ocr.py (unchanged)
     %% ─────────────────────────────────────────────
 
-    class OcrModule {
-        <<module: ocr>>
-        +IMAGE_EXTENSIONS: set
-        +OCR_SUPPORTED_EXTENSIONS: set
-        +PROVIDERS: dict
-        -_get_llm(provider: str, model: str, **kwargs) BaseChatModel
-        -_ocr_image(image_bytes: bytes, llm: BaseChatModel, mime_type: str, prompt: str) str
-        -_pdf_to_images(pdf_path: Path) list~bytes~
-        -_ensure_pdf(file_path: Path) tuple~Path_bool~
-        +ocr_and_save(file_path: Path, provider: str, model: str, ...) Path
+    %% ═════════════════════════════════════════════
+    %% auth.py  (REFACTORED — classes replace loose fns)
+    %% ═════════════════════════════════════════════
+
+    class CredentialStore {
+        -_service_name: str
+        +save_credentials(username: str, password: str) void
+        +get_credentials() tuple | None
+        +delete_credentials() void
+        +save_token(token: str) void
+        +get_token() str | None
+        +delete_token() void
     }
 
-    %% ─────────────────────────────────────────────
-    %% MCP Server: server.py
-    %% ─────────────────────────────────────────────
+    class SessionManager {
+        -_credential_store: CredentialStore
+        +__init__(credential_store: CredentialStore)
+        +get_client() MoodleClient
+        +login(username: str, password: str, headless: bool) str
+        +is_session_valid(token: str) bool
+    }
+
+    SessionManager --> CredentialStore : uses
+    SessionManager ..> AuthenticationError : raises
+    CredentialStore --> Constants : uses SERVICE_NAME
+
+    %% ═════════════════════════════════════════════
+    %% client.py  (REFACTORED — slimmed down, owns HTTP)
+    %% ═════════════════════════════════════════════
+
+    class MoodleClient {
+        -_http: httpx.Client
+        -_sesskey: str
+        +__init__(session_cookie: str)
+        -_fetch_sesskey() str
+        -_ajax(method: str, args: dict) dict
+        +get_courses() list~Course~
+        +get_course_contents(course_id: int) list~Section~
+        +get_forums(course_id: int) list~Resource~
+        +get_forum_discussions(forum_cmid: int, limit: int) list~Discussion~
+        +get_discussion_posts(discussion_id: int) list~ForumPost~
+        +get_upcoming_events(course_id: int | None, limit: int) list~Event~
+        +get_grades(course_id: int) list~GradeItem~
+        +get_assignment_details(assignment_cmid: int) AssignmentDetails
+        +get_resource_urls(resource_id: int, module: str) list~str~
+        +download_file(url: str, dest_dir: Path, filename: str | None) Path
+        +find_resource(course_id: int, resource_id: int) Resource | None
+    }
+
+    MoodleClient --> Constants : uses BASE_URL
+    MoodleClient ..> MoodleClientError : raises
+    MoodleClient ..> Course : returns
+    MoodleClient ..> Section : returns
+    MoodleClient ..> Resource : returns
+    MoodleClient ..> Event : returns
+    MoodleClient ..> Discussion : returns
+    MoodleClient ..> ForumPost : returns
+    MoodleClient ..> GradeItem : returns
+    MoodleClient ..> AssignmentDetails : returns
+    SessionManager ..> MoodleClient : creates
+
+    %% ═════════════════════════════════════════════
+    %% converter.py  (REFACTORED — Strategy pattern)
+    %% ═════════════════════════════════════════════
+
+    class FileConverter {
+        <<Protocol>>
+        +supported_input: str
+        +supported_output: str
+        +convert(input_path: Path, output_dir: Path | None) Path
+    }
+
+    class DocxToPdfConverter {
+        +supported_input = ".docx"
+        +supported_output = ".pdf"
+        +convert(input_path: Path, output_dir: Path | None) Path
+    }
+
+    class PptxToPdfConverter {
+        +supported_input = ".pptx"
+        +supported_output = ".pdf"
+        +convert(input_path: Path, output_dir: Path | None) Path
+    }
+
+    class PdfToMarkdownConverter {
+        +supported_input = ".pdf"
+        +supported_output = ".md"
+        +convert(input_path: Path, output_dir: Path | None) Path
+    }
+
+    DocxToPdfConverter ..|> FileConverter : implements
+    PptxToPdfConverter ..|> FileConverter : implements
+    PdfToMarkdownConverter ..|> FileConverter : implements
+
+    %% ═════════════════════════════════════════════
+    %% ocr.py  (REFACTORED — encapsulated in class)
+    %% ═════════════════════════════════════════════
+
+    class OcrConverter {
+        -_provider: str
+        -_model: str
+        -_provider_kwargs: dict
+        +__init__(provider: str, model: str, **kwargs)
+        +convert(input_path: Path, output_format: str, output_dir: Path | None, on_page: Callable | None) Path
+        +supported_extensions()$ set~str~
+        -_get_llm() BaseChatModel
+        -_ocr_image(image_bytes: bytes, mime_type: str, prompt: str) str
+        -_pdf_to_images(pdf_path: Path) list~bytes~
+        -_ensure_pdf(file_path: Path) tuple~Path_bool~
+    }
+
+    OcrConverter ..> FileConverter : uses for pre-conversion
+
+    %% ═════════════════════════════════════════════
+    %% services.py  (NEW — shared orchestration layer)
+    %% ═════════════════════════════════════════════
+
+    class ConversionPipeline {
+        -_converters: dict
+        -_ocr_converter: OcrConverter | None
+        +__init__(ocr_config: OcrConfig | None)
+        +convert(path: Path, to_format: str, output_dir: Path) Path
+        +ocr_convert(path: Path, output_format: str, output_dir: Path, on_page: Callable | None) Path
+    }
+
+    class DownloadService {
+        -_client: MoodleClient
+        -_pipeline: ConversionPipeline
+        +__init__(client: MoodleClient, pipeline: ConversionPipeline)
+        +download_resource(course_id: int, resource_id: int, dest_dir: Path, to_format: str | None, file_filter: str | None, ocr: bool, on_page: Callable | None) list~Path~
+    }
+
+    ConversionPipeline --> FileConverter : chains
+    ConversionPipeline --> OcrConverter : uses
+    ConversionPipeline --> OcrConfig : reads
+    DownloadService --> MoodleClient : uses
+    DownloadService --> ConversionPipeline : delegates
+
+    %% ═════════════════════════════════════════════
+    %% Apps layer (CLI + MCP — thin wrappers)
+    %% ═════════════════════════════════════════════
+
+    class CLI_App {
+        <<Typer · app.py>>
+        +login_cmd() void
+        +logout_cmd() void
+        +status() void
+        +courses() void
+        +resources(course_id) void
+        +download(course_id, resource_id, ...) void
+        +download_all(course_id, ...) void
+        +events(course_id) void
+        +grades(course_id) void
+        +forums(course_id) void
+        +discussions(forum_id) void
+        +posts(discussion_id) void
+        +config(...) void
+        +clear_downloads() void
+    }
+
+    class MCP_Server {
+        <<FastMCP · server.py>>
+        +get_courses() tool
+        +get_course_resources(course_id) tool
+        +download(course_id, resource_id, ...) tool
+        +ocr_status(job_id) tool
+        +get_upcoming_events(course_id) tool
+        +get_grades(course_id) tool
+        +get_forums(course_id) tool
+        +get_forum_discussions(forum_id) tool
+        +get_discussion_posts(discussion_id) tool
+        +read_downloaded_file(filename) tool
+        +clear_downloads(force) tool
+    }
 
     class OcrJob {
         +id: str
@@ -346,8 +505,8 @@ classDiagram
         +current_page: int
         +total_pages: int
         +status: str
-        +result_path: str|None
-        +error: str|None
+        +result_path: str | None
+        +error: str | None
     }
 
     %% Cross-module dependencies
