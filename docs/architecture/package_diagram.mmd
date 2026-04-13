@@ -1,0 +1,35 @@
+graph TB
+    subgraph core["aulasvirtuales-core (Package)"]
+        direction TB
+        
+        auth["auth.py<br/><i>SSO & Credentials</i>"]
+        client["client.py<br/><i>Moodle AJAX Client</i>"]
+        config["config.py<br/><i>Configuration Management</i>"]
+        conv["converter.py<br/><i>Format Conversion (PDF/MD)</i>"]
+        down["downloader.py<br/><i>File & Resource Downloader</i>"]
+        ocr["ocr.py<br/><i>Vision LLM Integration</i>"]
+
+        %% Internal Relationships
+        client -.-> down
+        ocr -.-> conv
+        client -.-> auth
+    end
+
+    %% External Dependencies (Keep only the direct mapping)
+    playwright["playwright"]
+    httpx["httpx"]
+    keyring["keyring"]
+    langchain["langchain"]
+
+    auth --> playwright
+    auth --> keyring
+    client --> httpx
+    ocr --> langchain
+    conv --> pymupdf["pymupdf"]
+
+    %% Styling
+    classDef pkgStyle fill:#e1f5fe,stroke:#01579b,color:#01579b
+    classDef extStyle fill:#f5f5f5,stroke:#424242,color:#424242
+
+    class auth,client,config,conv,down,ocr pkgStyle
+    class playwright,httpx,keyring,langchain,pymupdf extStyle
