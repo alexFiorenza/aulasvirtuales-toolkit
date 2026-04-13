@@ -1,0 +1,203 @@
+classDiagram
+    direction TB
+
+    %% ─────────────────────────────────────────────
+    %% Core Package: client.py
+    %% ─────────────────────────────────────────────
+
+    class MoodleClient {
+        -_http: httpx.Client
+        -_sesskey: str
+        +__init__(session_cookie: str)
+        -_fetch_sesskey() str
+        -_ajax(method: str, args: dict) dict
+        +get_courses() list~Course~
+        +get_course_contents(course_id: int) list~Section~
+        +get_forums(course_id: int) list~Resource~
+        +get_forum_discussions(forum_cmid: int, limit: int) list~Discussion~
+        +get_discussion_posts(discussion_id: int) list~ForumPost~
+        +get_upcoming_events(course_id: int|None, limit: int) list~Event~
+        +get_grades(course_id: int) list~GradeItem~
+        +get_assignment_details(assignment_cmid: int) AssignmentDetails
+    }
+
+    class Course {
+        +id: int
+        +fullname: str
+        +url: str
+    }
+
+    class Resource {
+        +id: int
+        +name: str
+        +module: str
+        +url: str|None
+        +type_label: str
+    }
+
+    class Section {
+        +id: int
+        +number: int
+        +name: str
+        +resources: list~Resource~
+    }
+
+    class Event {
+        +id: int
+        +name: str
+        +course_name: str
+        +module: str
+        +timestamp: int
+        +url: str
+        +action: str
+        +date: str
+    }
+
+    class Discussion {
+        +id: int
+        +title: str
+    }
+
+    class ForumPost {
+        +id: int
+        +subject: str
+        +author: str
+        +message: str
+        +timestamp: int
+        +date: str
+        +clean_message: str
+    }
+
+    class GradeItem {
+        +name: str
+        +grade: str
+        +range: str
+        +percentage: str
+        +feedback: str
+    }
+
+    class SubmissionComment {
+        +author: str
+        +date: str
+        +content: str
+    }
+
+    class AssignmentDetails {
+        +grade: str
+        +comments: list~SubmissionComment~
+    }
+
+    class MoodleClientError {
+        <<exception>>
+    }
+
+    %% Relationships
+    MoodleClient --> Course : returns
+    MoodleClient --> Section : returns
+    MoodleClient --> Resource : returns
+    MoodleClient --> Event : returns
+    MoodleClient --> Discussion : returns
+    MoodleClient --> ForumPost : returns
+    MoodleClient --> GradeItem : returns
+    MoodleClient --> AssignmentDetails : returns
+    MoodleClient ..> MoodleClientError : raises
+    Section o-- Resource : contains
+    AssignmentDetails o-- SubmissionComment : contains
+
+    %% ─────────────────────────────────────────────
+    %% Core Package: auth.py
+    %% ─────────────────────────────────────────────
+
+    class AuthModule {
+        <<module: auth>>
+        +save_credentials(username: str, password: str)
+        +get_credentials() tuple|None
+        +delete_credentials()
+        +login(username: str, password: str, headless: bool) str
+        +save_token(token: str)
+        +get_token() str|None
+        +delete_token()
+        +is_session_valid(session_cookie: str) bool
+    }
+
+    class AuthenticationError {
+        <<exception>>
+    }
+
+    AuthModule ..> AuthenticationError : raises
+
+    %% ─────────────────────────────────────────────
+    %% Core Package: config.py
+    %% ─────────────────────────────────────────────
+
+    class ConfigModule {
+        <<module: config>>
+        +CONFIG_DIR: Path
+        +CONFIG_FILE: Path
+        +DEFAULT_DOWNLOAD_DIR: Path
+        +load_config() dict
+        +save_config(config: dict)
+        +get_download_dir() Path
+        +set_download_dir(path: Path)
+        +get_ocr_config() dict
+        +set_ocr_provider(provider: str)
+        +set_ocr_model(model: str)
+        +set_ocr_provider_kwarg(provider: str, key: str, value: str)
+    }
+
+    %% ─────────────────────────────────────────────
+    %% Core Package: converter.py
+    %% ─────────────────────────────────────────────
+
+    class ConverterModule {
+        <<module: converter>>
+        +pdf_to_markdown(pdf_path: Path) str
+        +convert_and_save(pdf_path: Path, output_dir: Path|None) Path
+        +docx_to_pdf(docx_path: Path, output_dir: Path|None) Path
+        +pptx_to_pdf(pptx_path: Path, output_dir: Path|None) Path
+    }
+
+    %% ─────────────────────────────────────────────
+    %% Core Package: downloader.py
+    %% ─────────────────────────────────────────────
+
+    class DownloaderModule {
+        <<module: downloader>>
+        +get_resource_files(http: httpx.Client, resource_id: int, module: str) list~str~
+        +download_file(http: httpx.Client, url: str, dest_dir: Path, filename: str|None) Path
+        +filename_from_url(url: str) str
+    }
+
+    %% ─────────────────────────────────────────────
+    %% Core Package: ocr.py
+    %% ─────────────────────────────────────────────
+
+    class OcrModule {
+        <<module: ocr>>
+        +IMAGE_EXTENSIONS: set
+        +OCR_SUPPORTED_EXTENSIONS: set
+        +PROVIDERS: dict
+        -_get_llm(provider: str, model: str, **kwargs) BaseChatModel
+        -_ocr_image(image_bytes: bytes, llm: BaseChatModel, mime_type: str, prompt: str) str
+        -_pdf_to_images(pdf_path: Path) list~bytes~
+        -_ensure_pdf(file_path: Path) tuple~Path_bool~
+        +ocr_and_save(file_path: Path, provider: str, model: str, ...) Path
+    }
+
+    %% ─────────────────────────────────────────────
+    %% MCP Server: server.py
+    %% ─────────────────────────────────────────────
+
+    class OcrJob {
+        +id: str
+        +filename: str
+        +current_page: int
+        +total_pages: int
+        +status: str
+        +result_path: str|None
+        +error: str|None
+    }
+
+    %% Cross-module dependencies
+    MoodleClient ..> DownloaderModule : uses _http
+    OcrModule ..> ConverterModule : uses for pre-conversion
