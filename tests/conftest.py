@@ -102,53 +102,6 @@ SAMPLE_GRADES_EMPTY_HTML = """
 </body></html>
 """
 
-SAMPLE_GRADES_ACTION_MENU_HTML = """
-<html><body>
-<table class="table generaltable user-grade">
-<thead><tr>
-<th colspan="2">Ítem de calificación</th>
-<th>Ponderación calculada</th>
-<th>Calificación</th>
-<th>Rango</th>
-<th>Porcentaje</th>
-<th>Retroalimentación</th>
-<th>Aporta al total del curso</th>
-</tr></thead>
-<tbody>
-<tr><th colspan="8">Curso Total</th></tr>
-<tr><td rowspan="4"></td></tr>
-<tr>
-<th><a class="gradeitemheader" href="/mod/assign/view.php?id=100">TPG1 Ética</a></th>
-<td>-</td>
-<td><div class="d-flex"><div>Entrega Muy bien</div><div><div class="action-menu moodle-actionmenu"><a title="Acciones">...</a></div></div></div></td>
-<td>No entrega–Entrega Muy bien</td>
-<td>75,00 %</td>
-<td>&nbsp;</td>
-<td>-</td>
-</tr>
-<tr>
-<th><a class="gradeitemheader" href="/mod/quiz/view.php?id=200">Quiz 1</a></th>
-<td>-</td>
-<td><div class="d-flex"><div>8,50</div><div><div class="action-menu moodle-actionmenu"><a title="Acciones">...</a></div></div></div></td>
-<td>0–10</td>
-<td>85,00 %</td>
-<td>&nbsp;</td>
-<td>-</td>
-</tr>
-<tr>
-<th><a class="gradeitemheader" href="/mod/assign/view.php?id=300">TPG2</a></th>
-<td>-</td>
-<td><div class="d-flex"><div></div><div><div class="action-menu moodle-actionmenu"><a title="Acciones">...</a></div></div></div></td>
-<td>–</td>
-<td></td>
-<td>&nbsp;</td>
-<td>-</td>
-</tr>
-</tbody>
-</table>
-</body></html>
-"""
-
 SAMPLE_RESOURCE_HTML = """
 <html><body>
 <a href="https://aulasvirtuales.frba.utn.edu.ar/pluginfile.php/12345/mod_resource/content/1/apunte.pdf">Download</a>
@@ -165,7 +118,6 @@ SAMPLE_FOLDER_HTML = """
 SAMPLE_ASSIGNMENT_HTML = """
 <html><body>
 <table>
-<tr><th>Estado de la entrega</th><td class="submissionstatussubmitted">Enviado para calificar</td></tr>
 <tr><th>Calificación</th><td>8.50</td></tr>
 </table>
 <script>
