@@ -2,37 +2,15 @@ classDiagram
     direction TB
 
     %% ─────────────────────────────────────────────
-    %% session.py — Shared infrastructure
-    %% ─────────────────────────────────────────────
-
-    class MoodleSession {
-        +http: httpx.Client
-        +sesskey: str
-        +__init__(session_cookie: str)
-        -_fetch_sesskey() str
-        +ajax(method: str, args: dict) dict
-    }
-
-    class MoodleClientError {
-        <<exception>>
-    }
-
-    MoodleSession ..> MoodleClientError : raises
-
-    %% ─────────────────────────────────────────────
-    %% client.py — Facade (delegates to services)
+    %% Core Package: client.py
     %% ─────────────────────────────────────────────
 
     class MoodleClient {
-        <<facade>>
-        -_session: MoodleSession
-        -_courses: CoursesService
-        -_forums: ForumsService
-        -_events: EventsService
-        -_grades: GradesService
-        -_assignments: AssignmentsService
+        -_http: httpx.Client
+        -_sesskey: str
         +__init__(session_cookie: str)
-        +http: httpx.Client
+        -_fetch_sesskey() str
+        -_ajax(method: str, args: dict) dict
         +get_courses() list~Course~
         +get_course_contents(course_id: int) list~Section~
         +get_forums(course_id: int) list~Resource~
@@ -40,80 +18,8 @@ classDiagram
         +get_discussion_posts(discussion_id: int) list~ForumPost~
         +get_upcoming_events(course_id: int|None, limit: int) list~Event~
         +get_grades(course_id: int) list~GradeItem~
-        +get_grades_with_status(course_id: int) list~GradeItem~
         +get_assignment_details(assignment_cmid: int) AssignmentDetails
     }
-
-    MoodleClient *-- MoodleSession
-    MoodleClient *-- CoursesService
-    MoodleClient *-- ForumsService
-    MoodleClient *-- EventsService
-    MoodleClient *-- GradesService
-    MoodleClient *-- AssignmentsService
-
-    %% ─────────────────────────────────────────────
-    %% services/ — Domain services
-    %% ─────────────────────────────────────────────
-
-    class CoursesService {
-        -_session: MoodleSession
-        +get_courses() list~Course~
-        +get_course_contents(course_id: int) list~Section~
-    }
-
-    class ForumsService {
-        -_session: MoodleSession
-        -_courses: CoursesService
-        +get_forums(course_id: int) list~Resource~
-        +get_forum_discussions(forum_cmid: int, limit: int) list~Discussion~
-        +get_discussion_posts(discussion_id: int) list~ForumPost~
-    }
-
-    class EventsService {
-        -_session: MoodleSession
-        +get_upcoming_events(course_id: int|None, limit: int) list~Event~
-    }
-
-    class GradesService {
-        -_session: MoodleSession
-        -_assignments: AssignmentsService
-        +get_grades(course_id: int) list~GradeItem~
-        +get_grades_with_status(course_id: int) list~GradeItem~
-    }
-
-    class AssignmentsService {
-        -_session: MoodleSession
-        +get_assignment_details(assignment_cmid: int) AssignmentDetails
-    }
-
-    CoursesService --> MoodleSession
-    ForumsService --> MoodleSession
-    ForumsService --> CoursesService : get_forums delegates
-    EventsService --> MoodleSession
-    GradesService --> MoodleSession
-    GradesService --> AssignmentsService : get_grades_with_status delegates
-    AssignmentsService --> MoodleSession
-
-    %% ─────────────────────────────────────────────
-    %% parsers.py — Pure HTML parsing functions
-    %% ─────────────────────────────────────────────
-
-    class ParsersModule {
-        <<module: parsers>>
-        +strip_html(text: str) str
-        +clean_html_cell(raw: str) str
-        +parse_grade_table(html: str) list~tuple~
-        +parse_forum_discussions(html: str, limit: int) list~Discussion~
-        +parse_assignment_page(html: str) tuple
-    }
-
-    ForumsService ..> ParsersModule : uses
-    GradesService ..> ParsersModule : uses
-    AssignmentsService ..> ParsersModule : uses
-
-    %% ─────────────────────────────────────────────
-    %% models.py — All domain data classes
-    %% ─────────────────────────────────────────────
 
     class Course {
         +id: int
@@ -168,7 +74,6 @@ classDiagram
         +range: str
         +percentage: str
         +feedback: str
-        +status: str
     }
 
     class SubmissionComment {
@@ -180,54 +85,27 @@ classDiagram
     class AssignmentDetails {
         +grade: str
         +comments: list~SubmissionComment~
-        +submission_status: str
     }
 
+    class MoodleClientError {
+        <<exception>>
+    }
+
+    %% Relationships
+    MoodleClient --> Course : returns
+    MoodleClient --> Section : returns
+    MoodleClient --> Resource : returns
+    MoodleClient --> Event : returns
+    MoodleClient --> Discussion : returns
+    MoodleClient --> ForumPost : returns
+    MoodleClient --> GradeItem : returns
+    MoodleClient --> AssignmentDetails : returns
+    MoodleClient ..> MoodleClientError : raises
     Section o-- Resource : contains
     AssignmentDetails o-- SubmissionComment : contains
 
-    CoursesService --> Course : returns
-    CoursesService --> Section : returns
-    ForumsService --> Resource : returns
-    ForumsService --> Discussion : returns
-    ForumsService --> ForumPost : returns
-    EventsService --> Event : returns
-    GradesService --> GradeItem : returns
-    AssignmentsService --> AssignmentDetails : returns
-
     %% ─────────────────────────────────────────────
-    %% events.py — Observer pattern for progress reporting
-    %% ─────────────────────────────────────────────
-
-    class ProgressReporter {
-        <<Protocol>>
-        +on_step(message: str, output: Path) None
-        +on_error(message: str) None
-    }
-
-    class RichReporter {
-        <<CLI implementation>>
-        -_console: Console
-        +on_step(message: str, output: Path) None
-        +on_error(message: str) None
-    }
-
-    class NullReporter {
-        <<silent / MCP>>
-        +on_step(message: str, output: Path) None
-        +on_error(message: str) None
-    }
-
-    ProgressReporter <|.. RichReporter
-    ProgressReporter <|.. NullReporter
-
-    %% Who accepts a reporter
-    ConverterModule ..> ProgressReporter : convert() accepts optional reporter
-    DownloaderModule ..> ProgressReporter : download_file() accepts optional reporter
-    GradesService ..> ProgressReporter : get_grades_with_status() accepts optional reporter
-
-    %% ─────────────────────────────────────────────
-    %% auth.py (unchanged)
+    %% Core Package: auth.py
     %% ─────────────────────────────────────────────
 
     class AuthModule {
@@ -249,7 +127,7 @@ classDiagram
     AuthModule ..> AuthenticationError : raises
 
     %% ─────────────────────────────────────────────
-    %% config.py (unchanged)
+    %% Core Package: config.py
     %% ─────────────────────────────────────────────
 
     class ConfigModule {
@@ -268,49 +146,19 @@ classDiagram
     }
 
     %% ─────────────────────────────────────────────
-    %% converter.py — Strategy pattern for format conversion
+    %% Core Package: converter.py
     %% ─────────────────────────────────────────────
-
-    class ConversionStrategy {
-        <<Protocol>>
-        +convert(input_path: Path, output_dir: Path|None, reporter: ProgressReporter|None) Path
-    }
-
-    class PdfToMarkdown {
-        +convert(input_path: Path, output_dir: Path|None, reporter: ProgressReporter|None) Path
-    }
-
-    class DocxToMarkdown {
-        +convert(input_path: Path, output_dir: Path|None, reporter: ProgressReporter|None) Path
-    }
-
-    class PptxToMarkdown {
-        +convert(input_path: Path, output_dir: Path|None, reporter: ProgressReporter|None) Path
-    }
-
-    class DocxToPdf {
-        +convert(input_path: Path, output_dir: Path|None, reporter: ProgressReporter|None) Path
-    }
-
-    class PptxToPdf {
-        +convert(input_path: Path, output_dir: Path|None, reporter: ProgressReporter|None) Path
-    }
 
     class ConverterModule {
         <<module: converter>>
-        +STRATEGIES: dict
-        +convert(input_path: Path, to_format: str, output_dir: Path|None, reporter: ProgressReporter|None) Path
+        +pdf_to_markdown(pdf_path: Path) str
+        +convert_and_save(pdf_path: Path, output_dir: Path|None) Path
+        +docx_to_pdf(docx_path: Path, output_dir: Path|None) Path
+        +pptx_to_pdf(pptx_path: Path, output_dir: Path|None) Path
     }
 
-    ConversionStrategy <|.. PdfToMarkdown
-    ConversionStrategy <|.. DocxToMarkdown
-    ConversionStrategy <|.. PptxToMarkdown
-    ConversionStrategy <|.. DocxToPdf
-    ConversionStrategy <|.. PptxToPdf
-    ConverterModule --> ConversionStrategy : dispatches via STRATEGIES
-
     %% ─────────────────────────────────────────────
-    %% downloader.py (unchanged)
+    %% Core Package: downloader.py
     %% ─────────────────────────────────────────────
 
     class DownloaderModule {
@@ -321,7 +169,7 @@ classDiagram
     }
 
     %% ─────────────────────────────────────────────
-    %% ocr.py (unchanged)
+    %% Core Package: ocr.py
     %% ─────────────────────────────────────────────
 
     class OcrModule {
@@ -351,5 +199,5 @@ classDiagram
     }
 
     %% Cross-module dependencies
-    MoodleClient ..> DownloaderModule : exposes http
+    MoodleClient ..> DownloaderModule : uses _http
     OcrModule ..> ConverterModule : uses for pre-conversion

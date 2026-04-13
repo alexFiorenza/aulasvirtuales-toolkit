@@ -85,7 +85,6 @@ MCP-compatible AI agents (Claude Desktop, Cursor, Copilot) that need to:
 | Feature | Description |
 |---|---|
 | Grades | View grades, ranges, percentages, and feedback. |
-| Submission Status | Fetch submission status for assignments (e.g., "Enviado para calificar", "No entregado") via `--with-status`. |
 | Deep Comments | Fetch inline submission comments from assignments. |
 | Forums | Browse forums, discussions, and individual posts. |
 | Events | View upcoming events and deadlines across all courses. |
