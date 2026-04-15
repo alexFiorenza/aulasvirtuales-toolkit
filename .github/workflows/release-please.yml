@@ -13,8 +13,8 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     outputs:
-      cli-release-created: ${{ steps.release.outputs['apps--aulasvirtuales-cli--release_created'] }}
-      cli-version: ${{ steps.release.outputs['apps--aulasvirtuales-cli--version'] }}
+      cli-release-created: ${{ steps.release.outputs['apps/aulasvirtuales-cli--release_created'] }}
+      cli-version: ${{ steps.release.outputs['apps/aulasvirtuales-cli--version'] }}
     steps:
       - name: Run Release Please
         uses: googleapis/release-please-action@v4
