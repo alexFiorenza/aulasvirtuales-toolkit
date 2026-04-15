@@ -21,6 +21,9 @@ jobs:
           config-file: .release-please-config.json
           manifest-file: .release-please-manifest.json
 
+      - name: Debug Release Please outputs
+        run: echo '${{ toJSON(steps.release.outputs) }}'
+
       - name: Checkout Code
         if: ${{ steps.release.outputs['apps--aulasvirtuales-cli--release_created'] }}
         uses: actions/checkout@v4
