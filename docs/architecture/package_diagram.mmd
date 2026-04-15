@@ -1,21 +1,57 @@
 graph TB
     subgraph core["aulasvirtuales-core (Package)"]
         direction TB
-        
+
         auth["auth.py<br/><i>SSO & Credentials</i>"]
-        client["client.py<br/><i>Moodle AJAX Client</i>"]
         config["config.py<br/><i>Configuration Management</i>"]
-        conv["converter.py<br/><i>Format Conversion (PDF/MD)</i>"]
+        conv["converter.py<br/><i>Conversion Strategies (PDF/DOCX/PPTX→MD)</i>"]
         down["downloader.py<br/><i>File & Resource Downloader</i>"]
         ocr["ocr.py<br/><i>Vision LLM Integration</i>"]
 
-        %% Internal Relationships
-        client -.-> down
+        models["models.py<br/><i>Domain Dataclasses</i>"]
+        parsers["parsers.py<br/><i>HTML Parsing Functions</i>"]
+        session["session.py<br/><i>HTTP Client & Session</i>"]
+        reporter["reporter.py<br/><i>ProgressReporter Protocol</i>"]
+        client["client.py<br/><i>Facade (delegates to services)</i>"]
+
+        subgraph services["services/"]
+            direction LR
+            courses["courses.py"]
+            forums["forums.py"]
+            events["events.py"]
+            grades["grades.py"]
+            assignments["assignments.py"]
+        end
+
+        %% Facade → Services
+        client --> session
+        client --> services
+
+        %% Services → Infrastructure
+        courses --> session
+        forums --> session
+        forums -.-> courses
+        events --> session
+        grades --> session
+        grades -.-> assignments
+        assignments --> session
+
+        %% Services → Parsers & Models
+        services --> parsers
+        services --> models
+        parsers --> models
+
+        %% Reporter (observer pattern)
+        conv -.-> reporter
+        down -.-> reporter
+        services -.-> reporter
+
+        %% Other internal
         ocr -.-> conv
-        client -.-> auth
+        client -.-> down
     end
 
-    %% External Dependencies (Keep only the direct mapping)
+    %% External Dependencies
     playwright["playwright"]
     httpx["httpx"]
     keyring["keyring"]
@@ -23,13 +59,17 @@ graph TB
 
     auth --> playwright
     auth --> keyring
-    client --> httpx
+    session --> httpx
     ocr --> langchain
     conv --> pymupdf["pymupdf"]
 
     %% Styling
     classDef pkgStyle fill:#e1f5fe,stroke:#01579b,color:#01579b
+    classDef svcStyle fill:#e8f5e9,stroke:#2e7d32,color:#2e7d32
+    classDef newStyle fill:#fff3e0,stroke:#e65100,color:#e65100
     classDef extStyle fill:#f5f5f5,stroke:#424242,color:#424242
 
-    class auth,client,config,conv,down,ocr pkgStyle
+    class auth,config,conv,down,ocr pkgStyle
+    class courses,forums,events,grades,assignments svcStyle
+    class models,parsers,session,client,reporter newStyle
     class playwright,httpx,keyring,langchain,pymupdf extStyle
