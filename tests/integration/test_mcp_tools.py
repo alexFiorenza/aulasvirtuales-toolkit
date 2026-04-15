@@ -37,7 +37,8 @@ class TestMcpToolsPipeline:
 
         mock_get_dir.return_value = tmp_path
 
-        result = await download(course_id=101, resource_id=10)
+        ctx = MagicMock()
+        result = await download(course_id=101, resource_id=10, ctx=ctx)
 
         assert "Downloaded" in result
         assert "apunte.pdf" in result

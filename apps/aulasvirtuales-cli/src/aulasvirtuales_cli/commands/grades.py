@@ -1,4 +1,5 @@
 import typer
+from rich.progress import BarColumn, MofNCompleteColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from rich.table import Table
 
 from aulasvirtuales_cli.app import app, console, get_client
@@ -17,28 +18,55 @@ def grades(
     """Show grades and feedback for a course."""
     client = get_client()
 
-    spinner_msg = "Fetching grades..."
+    spinner_msg = "🎓 Fetching grades..."
     if with_status:
-        spinner_msg = "Fetching grades and submission status..."
+        spinner_msg = "🎓 Fetching grades and submission status..."
     elif with_comments:
-        spinner_msg = "Fetching grades and deep comments..."
+        spinner_msg = "🎓 Fetching grades and deep comments..."
 
-    with console.status(spinner_msg, spinner="dots"):
+    with console.status(f"[cyan]{spinner_msg}[/cyan]", spinner="dots"):
         if with_status:
             grade_list = client.get_grades_with_status(course_id)
         else:
             grade_list = client.get_grades(course_id)
 
     if not grade_list:
-        console.print("No grades or feedback found for this course.", style="dim")
+        console.print("ℹ️  No grades or feedback found for this course.", style="dim")
         raise typer.Exit()
 
     assigns = []
     if with_comments:
-        sections = client.get_course_contents(course_id)
+        with console.status("[cyan]📂 Fetching course contents...[/cyan]", spinner="dots"):
+            sections = client.get_course_contents(course_id)
         assigns = [r for s in sections for r in s.resources if r.module == 'assign']
 
-    table = Table(title="Grades and Feedback")
+    matched_details: dict[int, object] = {}
+    if with_comments and assigns:
+        assigns_to_fetch = [
+            (g, a)
+            for g in grade_list
+            for a in assigns
+            if a.name in g.name
+        ]
+        if assigns_to_fetch:
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[cyan]{task.description}"),
+                BarColumn(),
+                MofNCompleteColumn(),
+                TextColumn("•"),
+                TimeElapsedColumn(),
+                console=console,
+            ) as progress:
+                task_id = progress.add_task("💬 Fetching comments", total=len(assigns_to_fetch))
+                for _, assign in assigns_to_fetch:
+                    try:
+                        matched_details[assign.id] = client.get_assignment_details(assign.id)
+                    except Exception:
+                        pass
+                    progress.advance(task_id)
+
+    table = Table(title="🎓 Grades and Feedback")
     table.add_column("Item", style="cyan", overflow="fold")
     table.add_column("Grade", style="green", justify="center")
     table.add_column("Range", style="dim", justify="center")
@@ -55,17 +83,13 @@ def grades(
 
         if with_comments and assigns:
             matched_assign = next((a for a in assigns if a.name in g.name), None)
-            if matched_assign:
-                try:
-                    details = client.get_assignment_details(matched_assign.id)
-                    if details.grade and details.grade not in ("-", "&nbsp;", ""):
-                        final_grade = details.grade
-
-                    if details.comments:
-                        sub_text = "\n".join([f"[{c.author}]: {c.content}" for c in details.comments])
-                        combined_feedback.append(f"[dim]Inline:[/dim]\n{sub_text}")
-                except Exception:
-                    pass
+            details = matched_details.get(matched_assign.id) if matched_assign else None
+            if details:
+                if details.grade and details.grade not in ("-", "&nbsp;", ""):
+                    final_grade = details.grade
+                if details.comments:
+                    sub_text = "\n".join([f"[{c.author}]: {c.content}" for c in details.comments])
+                    combined_feedback.append(f"[dim]Inline:[/dim]\n{sub_text}")
 
         feedback_str = "\n".join(combined_feedback) if combined_feedback else "-"
         if with_status:

@@ -1,5 +1,5 @@
 import os
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 
 from fastmcp import FastMCP
@@ -97,14 +97,14 @@ def resolve_ocr_config(
     return provider, model, provider_kwargs
 
 
-def ocr_convert_file(
+async def ocr_convert_file(
     path: Path,
     output_format: str,
     output_dir: Path,
     provider: str,
     model: str,
     provider_kwargs: dict,
-    on_page: Callable[[int, int], None] | None = None,
+    on_page: Callable[[int, int], Awaitable[None]] | None = None,
 ) -> Path:
     """Convert a file using OCR via a vision LLM."""
     from aulasvirtuales.ocr import OCR_SUPPORTED_EXTENSIONS, ocr_and_save
@@ -115,7 +115,7 @@ def ocr_convert_file(
     if suffix not in OCR_SUPPORTED_EXTENSIONS:
         raise ValueError(f"OCR not supported for {suffix} files.")
 
-    return ocr_and_save(
+    return await ocr_and_save(
         path, provider, model,
         provider_config=provider_kwargs,
         output_format=output_format,

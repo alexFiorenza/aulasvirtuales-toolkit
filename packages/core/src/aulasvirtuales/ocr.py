@@ -1,6 +1,7 @@
+import asyncio
 import base64
 import importlib
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 
 from langchain_core.language_models import BaseChatModel
@@ -65,6 +66,7 @@ def _pdf_to_images(pdf_path: Path) -> list[bytes]:
     """Render each page of a PDF as a PNG image."""
     import fitz
 
+    fitz.TOOLS.mupdf_display_errors(False)
     doc = fitz.open(str(pdf_path))
     images = []
     for page in doc:
@@ -90,14 +92,14 @@ def _ensure_pdf(file_path: Path) -> tuple[Path, bool]:
     raise ValueError(f"OCR not supported for {suffix} files.")
 
 
-def ocr_and_save(
+async def ocr_and_save(
     file_path: Path,
     provider: str,
     model: str,
     provider_config: dict | None = None,
     output_format: str = "md",
     output_dir: Path | None = None,
-    on_page: Callable[[int, int], None] | None = None,
+    on_page: Callable[[int, int], Awaitable[None]] | None = None,
 ) -> Path:
     """Convert a file to markdown or plain text using OCR via a vision LLM."""
     llm = _get_llm(provider, model, **(provider_config or {}))
@@ -107,8 +109,10 @@ def ocr_and_save(
     if suffix in IMAGE_EXTENSIONS:
         mime = _MIME_TYPES.get(suffix, "image/png")
         if on_page:
-            on_page(1, 1)
-        content = _ocr_image(file_path.read_bytes(), llm, mime, prompt)
+            await on_page(1, 1)
+        content = await asyncio.to_thread(
+            _ocr_image, file_path.read_bytes(), llm, mime, prompt
+        )
     else:
         pdf_path, cleanup = _ensure_pdf(file_path)
         images = _pdf_to_images(pdf_path)
@@ -118,8 +122,10 @@ def ocr_and_save(
         parts = []
         for i, img in enumerate(images):
             if on_page:
-                on_page(i + 1, len(images))
-            parts.append(_ocr_image(img, llm, "image/png", prompt))
+                await on_page(i + 1, len(images))
+            parts.append(
+                await asyncio.to_thread(_ocr_image, img, llm, "image/png", prompt)
+            )
         content = "\n\n---\n\n".join(parts)
 
     out_dir = output_dir or file_path.parent

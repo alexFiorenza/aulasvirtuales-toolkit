@@ -8,16 +8,10 @@ class Aulasvirtuales < Formula
   depends_on "python@3.12"
 
   def install
-    # Create an isolated Python virtual environment
     system "python3", "-m", "venv", libexec
 
-    # Copy source packages into the prefix so post_install can pip-install them.
-    # pip install must happen in post_install to avoid Homebrew's dylib relocation
-    # phase, which fails on native extensions (orjson, playwright) whose Mach-O
-    # headers are too small for the rewritten install names.
     (libexec/"src").install "packages", "apps"
 
-    # Create a wrapper executable that injects the PLAYWRIGHT_BROWSERS_PATH environment variable at runtime.
     (bin/"aulasvirtuales").write_env_script libexec/"bin/aulasvirtuales",
       PLAYWRIGHT_BROWSERS_PATH: share/"playwright-browsers"
   end

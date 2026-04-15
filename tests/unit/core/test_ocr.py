@@ -48,11 +48,10 @@ class TestOcrImage:
 class TestOcrAndSave:
     @patch("aulasvirtuales.ocr._get_llm")
     @patch("aulasvirtuales.ocr._pdf_to_images")
-    def test_ocr_and_save_pdf(self, mock_pdf_to_images, mock_get_llm, tmp_path):
+    async def test_ocr_and_save_pdf(self, mock_pdf_to_images, mock_get_llm, tmp_path):
         """Multi-page PDF OCR produces markdown with page separators."""
         from aulasvirtuales.ocr import ocr_and_save
 
-        # Setup mock LLM
         mock_llm = MagicMock()
         mock_llm.invoke.side_effect = [
             MagicMock(content="Page 1 content"),
@@ -60,24 +59,22 @@ class TestOcrAndSave:
         ]
         mock_get_llm.return_value = mock_llm
 
-        # Setup mock PDF-to-images
         mock_pdf_to_images.return_value = [b"page1_png", b"page2_png"]
 
-        # Create fake PDF
         pdf_path = tmp_path / "test.pdf"
         pdf_path.write_bytes(b"fake pdf data")
 
-        result = ocr_and_save(pdf_path, "ollama", "llava", output_dir=tmp_path)
+        result = await ocr_and_save(pdf_path, "ollama", "llava", output_dir=tmp_path)
 
         assert result.suffix == ".md"
         assert result.exists()
         content = result.read_text(encoding="utf-8")
         assert "Page 1 content" in content
         assert "Page 2 content" in content
-        assert "---" in content  # Page separator
+        assert "---" in content
 
     @patch("aulasvirtuales.ocr._get_llm")
-    def test_ocr_and_save_image(self, mock_get_llm, tmp_path):
+    async def test_ocr_and_save_image(self, mock_get_llm, tmp_path):
         """Single image file OCR saves extracted text."""
         from aulasvirtuales.ocr import ocr_and_save
 
@@ -88,13 +85,13 @@ class TestOcrAndSave:
         img_path = tmp_path / "photo.png"
         img_path.write_bytes(b"fake png data")
 
-        result = ocr_and_save(img_path, "ollama", "llava", output_dir=tmp_path)
+        result = await ocr_and_save(img_path, "ollama", "llava", output_dir=tmp_path)
 
         assert result == tmp_path / "photo.md"
         assert result.read_text(encoding="utf-8") == "Text from image"
 
     @patch("aulasvirtuales.ocr._get_llm")
-    def test_ocr_and_save_with_page_callback(self, mock_get_llm, tmp_path):
+    async def test_ocr_and_save_with_page_callback(self, mock_get_llm, tmp_path):
         """Page callback is invoked for progress tracking."""
         from aulasvirtuales.ocr import ocr_and_save
 
@@ -107,10 +104,12 @@ class TestOcrAndSave:
 
         pages_tracked = []
 
-        def on_page(current, total):
+        async def on_page(current, total):
             pages_tracked.append((current, total))
 
-        ocr_and_save(img_path, "ollama", "llava", output_dir=tmp_path, on_page=on_page)
+        await ocr_and_save(
+            img_path, "ollama", "llava", output_dir=tmp_path, on_page=on_page
+        )
 
         assert len(pages_tracked) == 1
         assert pages_tracked[0] == (1, 1)
