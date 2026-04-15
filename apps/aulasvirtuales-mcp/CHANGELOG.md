@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.5.1](https://github.com/alexFiorenza/aulasvirtuales-toolkit/compare/aulasvirtuales-mcp-v0.5.0...aulasvirtuales-mcp-v0.5.1) (2026-04-15)
+
+
+### Bug Fixes
+
+* **ci:** separate homebrew update into dedicated job gated on cli release ([8120895](https://github.com/alexFiorenza/aulasvirtuales-toolkit/commit/8120895d6f81a4fd9f78a0ced7bf11a925cc9861))
+
+
+### Code Refactoring
+
+* async ocr pipeline with progress bars and improved cli ux ([a387d26](https://github.com/alexFiorenza/aulasvirtuales-toolkit/commit/a387d26c9cc7c943f038656d0dfe743f1747caa9))
+* **mcp:** split monolithic server.py into domain tool modules ([4bc7c3a](https://github.com/alexFiorenza/aulasvirtuales-toolkit/commit/4bc7c3ab232729656f72c7b6681fb6752466111b))
+
 ## [0.5.0](https://github.com/alexFiorenza/aulasvirtuales-toolkit/compare/aulasvirtuales-mcp-v0.4.0...aulasvirtuales-mcp-v0.5.0) (2026-04-10)
 
 
