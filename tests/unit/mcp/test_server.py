@@ -94,19 +94,6 @@ class TestGetGradesTool:
 
 
 @pytest.mark.unit
-class TestOcrStatus:
-    def test_ocr_status_no_jobs(self):
-        """ocr_status returns 'no jobs' message when registry is empty."""
-        from aulasvirtuales_mcp.tools.downloads import ocr_status, _ocr_jobs
-
-        _ocr_jobs.clear()
-
-        result = ocr_status()
-
-        assert "No OCR jobs" in result
-
-
-@pytest.mark.unit
 class TestClearDownloadsTool:
     @patch("aulasvirtuales_mcp.tools.downloads.get_download_dir")
     def test_clear_downloads_empty_dir(self, mock_get_dir, tmp_path):

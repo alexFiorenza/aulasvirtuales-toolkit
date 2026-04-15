@@ -9,14 +9,15 @@ def events(
     course_id: int = typer.Argument(None, help="Course ID (optional, omit to show all)"),
 ) -> None:
     """Show upcoming events and pending assignments."""
-    client = get_client()
-    event_list = client.get_upcoming_events(course_id)
+    with console.status("[cyan]📅 Fetching upcoming events...[/cyan]", spinner="dots"):
+        client = get_client()
+        event_list = client.get_upcoming_events(course_id)
 
     if not event_list:
-        console.print("No upcoming events.", style="dim")
+        console.print("ℹ️  No upcoming events.", style="dim")
         raise typer.Exit()
 
-    table = Table(title="Upcoming Events")
+    table = Table(title="📅 Upcoming Events")
     table.add_column("Date", style="cyan")
     table.add_column("Course", style="magenta")
     table.add_column("Type", style="green")

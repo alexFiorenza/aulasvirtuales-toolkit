@@ -1,7 +1,16 @@
+import asyncio
 from pathlib import Path
 
 import typer
 from rich.console import Console
+from rich.progress import (
+    BarColumn,
+    MofNCompleteColumn,
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    TimeElapsedColumn,
+)
 
 from aulasvirtuales_cli import __version__
 from aulasvirtuales.auth import get_credentials, get_token, is_session_valid, login, save_token
@@ -122,25 +131,29 @@ def ocr_convert_file(
         console.print(f"OCR not supported for {suffix} files.", style="red")
         raise typer.Exit(1)
 
-    with console.status("") as status:
-        state = {"total": 0}
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[cyan]{task.description}"),
+        BarColumn(),
+        MofNCompleteColumn(),
+        TextColumn("•"),
+        TimeElapsedColumn(),
+        console=console,
+    ) as progress:
+        task_id = progress.add_task(f"🔍 OCR {path.name}", total=None)
 
-        def on_page(current: int, total: int) -> None:
-            state["total"] = total
-            if current > 1:
-                console.print(f"    [dim]✓ OCR completed for page {current - 1}/{total}[/dim]")
-            status.update(f"  [cyan]Processing OCR page {current}/{total}...[/cyan]")
+        async def on_page(current: int, total: int) -> None:
+            progress.update(task_id, completed=current, total=total)
 
-        result = ocr_and_save(
-            path, provider, model,
-            provider_config=provider_kwargs,
-            output_format=output_format,
-            output_dir=output_dir,
-            on_page=on_page,
+        result = asyncio.run(
+            ocr_and_save(
+                path, provider, model,
+                provider_config=provider_kwargs,
+                output_format=output_format,
+                output_dir=output_dir,
+                on_page=on_page,
+            )
         )
-
-        if state["total"] > 0:
-            console.print(f"    [dim]✓ OCR completed for page {state['total']}/{state['total']}[/dim]")
 
     ext_label = "markdown" if output_format == "md" else "text"
     console.print(f"  [green]✓[/green] {result.name} ({ext_label}, ocr)")

@@ -7,14 +7,15 @@ from aulasvirtuales_cli.app import app, console, get_client
 @app.command()
 def forums(course_id: int = typer.Argument(help="Course ID")) -> None:
     """List forums in a course."""
-    client = get_client()
-    forum_list = client.get_forums(course_id)
+    with console.status("[cyan]💬 Fetching forums...[/cyan]", spinner="dots"):
+        client = get_client()
+        forum_list = client.get_forums(course_id)
 
     if not forum_list:
-        console.print("No forums in this course.", style="dim")
+        console.print("ℹ️  No forums in this course.", style="dim")
         raise typer.Exit()
 
-    table = Table(title="Forums")
+    table = Table(title="💬 Forums")
     table.add_column("ID", style="cyan", justify="right")
     table.add_column("Name", style="white")
 
@@ -30,14 +31,15 @@ def discussions(
     limit: int = typer.Option(10, "--limit", "-n", help="Number of discussions to show"),
 ) -> None:
     """List discussions in a forum."""
-    client = get_client()
-    disc_list = client.get_forum_discussions(forum_id, limit)
+    with console.status("[cyan]🗨️  Fetching discussions...[/cyan]", spinner="dots"):
+        client = get_client()
+        disc_list = client.get_forum_discussions(forum_id, limit)
 
     if not disc_list:
-        console.print("No discussions in this forum.", style="dim")
+        console.print("ℹ️  No discussions in this forum.", style="dim")
         raise typer.Exit()
 
-    table = Table(title="Discussions")
+    table = Table(title="🗨️  Discussions")
     table.add_column("ID", style="cyan", justify="right")
     table.add_column("Title", style="white")
 
@@ -50,15 +52,16 @@ def discussions(
 @app.command()
 def posts(discussion_id: int = typer.Argument(help="Discussion ID")) -> None:
     """Show messages in a forum discussion."""
-    client = get_client()
-    post_list = client.get_discussion_posts(discussion_id)
+    with console.status("[cyan]📝 Fetching posts...[/cyan]", spinner="dots"):
+        client = get_client()
+        post_list = client.get_discussion_posts(discussion_id)
 
     if not post_list:
-        console.print("No posts in this discussion.", style="dim")
+        console.print("ℹ️  No posts in this discussion.", style="dim")
         raise typer.Exit()
 
     for p in post_list:
-        console.print(f"\n[bold cyan]{p.author}[/bold cyan] — [dim]{p.date}[/dim]")
+        console.print(f"\n[bold cyan]👤 {p.author}[/bold cyan] — [dim]{p.date}[/dim]")
         console.print(f"[bold]{p.subject}[/bold]")
         console.print(p.clean_message)
         console.print("─" * 60, style="dim")
