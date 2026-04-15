@@ -12,6 +12,9 @@ permissions:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    outputs:
+      cli-release-created: ${{ steps.release.outputs['apps--aulasvirtuales-cli--release_created'] }}
+      cli-version: ${{ steps.release.outputs['apps--aulasvirtuales-cli--version'] }}
     steps:
       - name: Run Release Please
         uses: googleapis/release-please-action@v4
@@ -24,27 +27,30 @@ jobs:
       - name: Debug Release Please outputs
         run: echo '${{ toJSON(steps.release.outputs) }}'
 
+  update-homebrew:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.cli-release-created == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
       - name: Checkout Code
-        if: ${{ steps.release.outputs['apps--aulasvirtuales-cli--release_created'] }}
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update Homebrew Formula
-        if: ${{ steps.release.outputs['apps--aulasvirtuales-cli--release_created'] }}
         run: |
-          VERSION="${{ steps.release.outputs['apps--aulasvirtuales-cli--version'] }}"
+          VERSION="${{ needs.release-please.outputs.cli-version }}"
           TARBALL_URL="https://github.com/${{ github.repository }}/archive/refs/tags/aulasvirtuales-cli-v${VERSION}.tar.gz"
-          
+
           # Download tarball to compute SHA256
           curl -sL $TARBALL_URL -o source.tar.gz
           SHA256=$(sha256sum source.tar.gz | awk '{print $1}')
-          
+
           # Update the Formula file inside the repo
           sed -i "s/version \".*\"/version \"${VERSION}\"/" Formula/aulasvirtuales.rb
           sed -i "s/sha256 \".*\"/sha256 \"${SHA256}\"/" Formula/aulasvirtuales.rb
           sed -i "s|url \".*\"|url \"${TARBALL_URL}\"|" Formula/aulasvirtuales.rb
-          
+
           # Commit the changes back to master
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
