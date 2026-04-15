@@ -1,4 +1,4 @@
-"""Unit tests for aulasvirtuales_mcp.server — MCP server tools."""
+"""Unit tests for aulasvirtuales_mcp — MCP server tools."""
 
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -8,26 +8,17 @@ import pytest
 from aulasvirtuales.client import Course, Event, GradeItem, Resource, Section
 
 
-# ---------------------------------------------------------------------------
-# Helper to mock _get_client globally for MCP tools
-# ---------------------------------------------------------------------------
-
 def _mock_client():
     """Create a mock MoodleClient."""
-    client = MagicMock()
-    return client
+    return MagicMock()
 
-
-# ---------------------------------------------------------------------------
-# Tests: MCP Tools
-# ---------------------------------------------------------------------------
 
 @pytest.mark.unit
 class TestGetCoursesTool:
-    @patch("aulasvirtuales_mcp.server._get_client")
+    @patch("aulasvirtuales_mcp.tools.courses.get_client")
     def test_get_courses_tool(self, mock_get_client):
         """get_courses MCP tool returns course list."""
-        from aulasvirtuales_mcp.server import get_courses
+        from aulasvirtuales_mcp.tools.courses import get_courses
 
         mock_client = _mock_client()
         mock_client.get_courses.return_value = [
@@ -43,10 +34,10 @@ class TestGetCoursesTool:
 
 @pytest.mark.unit
 class TestGetCourseResourcesTool:
-    @patch("aulasvirtuales_mcp.server._get_client")
+    @patch("aulasvirtuales_mcp.tools.courses.get_client")
     def test_get_course_resources_tool(self, mock_get_client):
         """get_course_resources MCP tool returns sections."""
-        from aulasvirtuales_mcp.server import get_course_resources
+        from aulasvirtuales_mcp.tools.courses import get_course_resources
 
         mock_client = _mock_client()
         mock_client.get_course_contents.return_value = [
@@ -65,10 +56,10 @@ class TestGetCourseResourcesTool:
 
 @pytest.mark.unit
 class TestGetUpcomingEventsTool:
-    @patch("aulasvirtuales_mcp.server._get_client")
+    @patch("aulasvirtuales_mcp.tools.events.get_client")
     def test_get_upcoming_events_tool(self, mock_get_client):
         """get_upcoming_events MCP tool returns events."""
-        from aulasvirtuales_mcp.server import get_upcoming_events
+        from aulasvirtuales_mcp.tools.events import get_upcoming_events
 
         mock_client = _mock_client()
         mock_client.get_upcoming_events.return_value = [
@@ -85,10 +76,10 @@ class TestGetUpcomingEventsTool:
 
 @pytest.mark.unit
 class TestGetGradesTool:
-    @patch("aulasvirtuales_mcp.server._get_client")
+    @patch("aulasvirtuales_mcp.tools.grades.get_client")
     def test_get_grades_tool(self, mock_get_client):
         """get_grades MCP tool returns grade items."""
-        from aulasvirtuales_mcp.server import get_grades
+        from aulasvirtuales_mcp.tools.grades import get_grades
 
         mock_client = _mock_client()
         mock_client.get_grades.return_value = [
@@ -106,7 +97,7 @@ class TestGetGradesTool:
 class TestOcrStatus:
     def test_ocr_status_no_jobs(self):
         """ocr_status returns 'no jobs' message when registry is empty."""
-        from aulasvirtuales_mcp.server import ocr_status, _ocr_jobs
+        from aulasvirtuales_mcp.tools.downloads import ocr_status, _ocr_jobs
 
         _ocr_jobs.clear()
 
@@ -117,10 +108,10 @@ class TestOcrStatus:
 
 @pytest.mark.unit
 class TestClearDownloadsTool:
-    @patch("aulasvirtuales_mcp.server.get_download_dir")
+    @patch("aulasvirtuales_mcp.tools.downloads.get_download_dir")
     def test_clear_downloads_empty_dir(self, mock_get_dir, tmp_path):
         """clear_downloads reports empty when directory has no files."""
-        from aulasvirtuales_mcp.server import clear_downloads
+        from aulasvirtuales_mcp.tools.downloads import clear_downloads
 
         empty_dir = tmp_path / "downloads"
         empty_dir.mkdir()
@@ -130,10 +121,10 @@ class TestClearDownloadsTool:
 
         assert "empty" in result.lower()
 
-    @patch("aulasvirtuales_mcp.server.get_download_dir")
+    @patch("aulasvirtuales_mcp.tools.downloads.get_download_dir")
     def test_clear_downloads_requires_force(self, mock_get_dir, tmp_path):
         """clear_downloads asks for confirmation without force flag."""
-        from aulasvirtuales_mcp.server import clear_downloads
+        from aulasvirtuales_mcp.tools.downloads import clear_downloads
 
         dl_dir = tmp_path / "downloads"
         dl_dir.mkdir()
@@ -143,13 +134,12 @@ class TestClearDownloadsTool:
         result = clear_downloads(force=False)
 
         assert "force" in result.lower()
-        # File should still exist
         assert (dl_dir / "file.txt").exists()
 
-    @patch("aulasvirtuales_mcp.server.get_download_dir")
+    @patch("aulasvirtuales_mcp.tools.downloads.get_download_dir")
     def test_clear_downloads_with_force(self, mock_get_dir, tmp_path):
         """clear_downloads deletes files when force=True."""
-        from aulasvirtuales_mcp.server import clear_downloads
+        from aulasvirtuales_mcp.tools.downloads import clear_downloads
 
         dl_dir = tmp_path / "downloads"
         dl_dir.mkdir()

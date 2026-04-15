@@ -10,18 +10,17 @@ from aulasvirtuales.client import Course, Resource, Section
 
 @pytest.mark.integration
 class TestMcpToolsPipeline:
-    @patch("aulasvirtuales_mcp.server.get_download_dir")
-    @patch("aulasvirtuales_mcp.server.download_file")
-    @patch("aulasvirtuales_mcp.server.get_resource_files")
-    @patch("aulasvirtuales_mcp.server._get_client")
+    @patch("aulasvirtuales_mcp.tools.downloads.get_download_dir")
+    @patch("aulasvirtuales_mcp.tools.downloads.download_file")
+    @patch("aulasvirtuales_mcp.tools.downloads.get_resource_files")
+    @patch("aulasvirtuales_mcp.tools.downloads.get_client")
     @pytest.mark.asyncio
     async def test_mcp_download_basic(
         self, mock_get_client, mock_get_files, mock_download, mock_get_dir, tmp_path
     ):
         """MCP download tool finds resource, gets URLs, and downloads files."""
-        from aulasvirtuales_mcp.server import download
+        from aulasvirtuales_mcp.tools.downloads import download
 
-        # Setup mocks
         mock_client = MagicMock()
         mock_client.get_course_contents.return_value = [
             Section(
@@ -38,18 +37,16 @@ class TestMcpToolsPipeline:
 
         mock_get_dir.return_value = tmp_path
 
-        # Execute
         result = await download(course_id=101, resource_id=10)
 
         assert "Downloaded" in result
         assert "apunte.pdf" in result
 
-    @patch("aulasvirtuales_mcp.server.get_download_dir")
+    @patch("aulasvirtuales_mcp.tools.downloads.get_download_dir")
     def test_mcp_read_downloaded_file_lists_files(self, mock_get_dir, tmp_path):
         """read_downloaded_file lists files when no filename is given."""
-        from aulasvirtuales_mcp.server import read_downloaded_file
+        from aulasvirtuales_mcp.tools.downloads import read_downloaded_file
 
-        # Create some files
         (tmp_path / "apunte.md").write_text("# Content")
         (tmp_path / "notes.txt").write_text("Notes")
         mock_get_dir.return_value = tmp_path
