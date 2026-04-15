@@ -26,6 +26,7 @@ from tests.conftest import (
     SAMPLE_COURSE_STATE,
     SAMPLE_EVENTS_RESPONSE,
     SAMPLE_FORUM_DISCUSSIONS_HTML,
+    SAMPLE_GRADES_ACTION_MENU_HTML,
     SAMPLE_GRADES_EMPTY_HTML,
     SAMPLE_GRADES_HTML,
     SAMPLE_POSTS_RESPONSE,
@@ -289,6 +290,37 @@ class TestGetGrades:
         assert grades[1].name == "TP1"
         assert grades[1].grade == "10.00"
 
+    def test_get_grades_strips_action_menu_from_grade_cells(self, monkeypatch):
+        """Action-menu HTML in grade cells is stripped, preserving real grades."""
+        client = _make_client(monkeypatch)
+        _setup_get(client, SAMPLE_GRADES_ACTION_MENU_HTML)
+
+        grades = client.get_grades(101)
+
+        assert len(grades) == 3
+        assert grades[0].name == "TPG1 Ética"
+        assert grades[0].grade == "Entrega Muy bien"
+        assert grades[0].percentage == "75,00 %"
+        assert grades[1].name == "Quiz 1"
+        assert grades[1].grade == "8,50"
+        assert grades[1].range == "0–10"
+        assert grades[2].name == "TPG2"
+        assert grades[2].grade == ""
+
+    def test_parse_grade_table_extracts_assign_cmids(self, monkeypatch):
+        """Assign cmids are extracted from gradeitemheader links."""
+        client = _make_client(monkeypatch)
+
+        parsed = client._parse_grade_table(SAMPLE_GRADES_ACTION_MENU_HTML)
+
+        assert len(parsed) == 3
+        _, cmid0 = parsed[0]
+        _, cmid1 = parsed[1]
+        _, cmid2 = parsed[2]
+        assert cmid0 == 100
+        assert cmid1 is None  # quiz, not assign
+        assert cmid2 == 300
+
     def test_get_grades_empty_table(self, monkeypatch):
         """Empty list returned when no grade table exists."""
         client = _make_client(monkeypatch)
@@ -323,6 +355,7 @@ class TestGetAssignmentDetails:
 
         assert isinstance(details, AssignmentDetails)
         assert details.grade == "8.50"
+        assert details.submission_status == "Enviado para calificar"
         assert len(details.comments) == 1
         assert details.comments[0].author == "Prof. García"
         assert details.comments[0].content == "Buen trabajo"

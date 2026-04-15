@@ -101,9 +101,9 @@ Used when AJAX endpoints don't expose the needed data:
 
 | Page | Data Extracted | Parsing Method |
 |---|---|---|
-| `/grade/report/user/index.php` | Grade table | Regex on HTML table |
+| `/grade/report/user/index.php` | Grade table (items, grades, ranges, percentages, feedback) + assignment cmids from `gradeitemheader` links | Regex on HTML table; action-menu HTML stripped before text extraction |
 | `/mod/forum/view.php` | Discussion links and titles | Regex on anchor tags |
-| `/mod/assign/view.php` | Assignment grade + comments | Regex + AJAX comment API |
+| `/mod/assign/view.php` | Assignment grade + submission status ("Estado de la entrega") + comments | Regex + AJAX comment API |
 | `/mod/resource/view.php` | File download URLs | Redirect following + regex |
 | `/mod/folder/view.php` | Folder file URLs | Regex on pluginfile URLs |
 
