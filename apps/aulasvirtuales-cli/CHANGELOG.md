@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/alexFiorenza/aulasvirtuales-toolkit/compare/aulasvirtuales-cli-v0.6.0...aulasvirtuales-cli-v0.6.1) (2026-04-15)
+
+
+### Bug Fixes
+
+* **ci:** separate homebrew update into dedicated job gated on cli release ([8120895](https://github.com/alexFiorenza/aulasvirtuales-toolkit/commit/8120895d6f81a4fd9f78a0ced7bf11a925cc9861))
+
 ## [0.6.0](https://github.com/alexFiorenza/aulasvirtuales-toolkit/compare/aulasvirtuales-cli-v0.5.0...aulasvirtuales-cli-v0.6.0) (2026-04-15)
 
 
