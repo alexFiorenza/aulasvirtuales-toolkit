@@ -52,7 +52,7 @@ HTML is parsed using Python's `re` module rather than an HTML parser like Beauti
 - **Fragile scraping**: HTML parsing with regex is inherently fragile. Moodle template updates could break grade parsing, discussion listing, or URL extraction without warning.
 - **No semantic guarantees**: The AJAX API is internal and undocumented. Method signatures could change across Moodle versions.
 - **Regex limitations**: Complex HTML structures can be incorrectly parsed by regex. For example, nested tables or dynamically-loaded content may be missed.
-- **Localization dependency**: The grade parsing currently relies on Spanish locale text ("Ítem de calificación", "Acciones", "Calificación") which would break for other locales.
+- **Localization dependency**: The grade parsing relies on Spanish locale text ("Ítem de calificación", "Calificación") and assignment status labels ("Estado de la entrega") which would break for other locales.
 
 ### Mitigations
 

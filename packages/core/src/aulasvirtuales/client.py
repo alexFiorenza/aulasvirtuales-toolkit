@@ -27,6 +27,7 @@ class GradeItem:
     range: str
     percentage: str
     feedback: str
+    status: str = ""
 
 
 @dataclass
@@ -40,6 +41,7 @@ class SubmissionComment:
 class AssignmentDetails:
     grade: str
     comments: list[SubmissionComment]
+    submission_status: str = ""
 
 
 class MoodleClient:
@@ -169,49 +171,80 @@ class MoodleClient:
             for e in data.get("events", [])
         ]
 
-    def get_grades(self, course_id: int) -> list["GradeItem"]:
-        response = self._http.get(
-            f"/grade/report/user/index.php?id={course_id}", follow_redirects=True
-        )
-        html = response.text
+    def _parse_grade_table(self, html: str) -> list[tuple["GradeItem", int | None]]:
+        """Parse the grade report HTML and return (GradeItem, assign_cmid) pairs.
 
+        assign_cmid is the course-module id when the item links to
+        ``/mod/assign/view.php``; ``None`` otherwise.
+        """
         tables = re.findall(
             r'<table[^>]*class="[^"]*user-grade[^"]*"[^>]*>(.*?)</table>', html, re.DOTALL
         )
         if not tables:
             return []
 
-        grades = []
+        results: list[tuple[GradeItem, int | None]] = []
         rows = re.findall(r'<tr[^>]*>(.*?)</tr>', tables[0], re.DOTALL)
         for row in rows:
             cols = re.findall(r'<t[dh][^>]*>(.*?)</t[dh]>', row, re.DOTALL)
+            if not cols:
+                continue
+
+            assign_cmid: int | None = None
+            href_match = re.search(r'/mod/assign/view\.php\?id=(\d+)', cols[0])
+            if href_match:
+                assign_cmid = int(href_match.group(1))
+
             clean_cols = []
             for c in cols:
-                clean = re.sub(r'<[^>]+>', ' ', c).strip()
+                clean = re.sub(r'<div class="action-menu.*', '', c, flags=re.DOTALL)
+                clean = re.sub(r'<[^>]+>', ' ', clean).strip()
                 clean = clean.replace('&ndash;', '-').replace('&nbsp;', '')
                 clean = re.sub(r'\s+', ' ', clean).strip()
                 clean_cols.append(clean)
 
-            if not clean_cols or not any(clean_cols):
+            if not any(clean_cols):
                 continue
             if clean_cols[0] == 'Ítem de calificación' or len(clean_cols) < 6:
                 continue
 
             name = clean_cols[0]
             grade = clean_cols[2] if len(clean_cols) > 2 else ""
-            if "Acciones" in grade:
-                grade = "-"
-            
-            grades.append(
+
+            results.append((
                 GradeItem(
                     name=name,
                     grade=grade,
                     range=clean_cols[3] if len(clean_cols) > 3 else "",
                     percentage=clean_cols[4] if len(clean_cols) > 4 else "",
                     feedback=clean_cols[5] if len(clean_cols) > 5 else "",
-                )
-            )
-        return grades
+                ),
+                assign_cmid,
+            ))
+        return results
+
+    def get_grades(self, course_id: int) -> list["GradeItem"]:
+        response = self._http.get(
+            f"/grade/report/user/index.php?id={course_id}", follow_redirects=True
+        )
+        return [item for item, _ in self._parse_grade_table(response.text)]
+
+    def get_grades_with_status(self, course_id: int) -> list["GradeItem"]:
+        """Like ``get_grades`` but also fetches submission status for assignments."""
+        response = self._http.get(
+            f"/grade/report/user/index.php?id={course_id}", follow_redirects=True
+        )
+        parsed = self._parse_grade_table(response.text)
+        items: list[GradeItem] = []
+        for item, cmid in parsed:
+            if cmid is not None:
+                try:
+                    details = self.get_assignment_details(cmid)
+                    item.status = details.submission_status
+                except Exception:
+                    pass
+            items.append(item)
+        return items
 
     def get_assignment_details(self, assignment_cmid: int) -> "AssignmentDetails":
         resp = self._http.get(f"/mod/assign/view.php?id={assignment_cmid}")
@@ -221,8 +254,16 @@ class MoodleClient:
         grade_str = ""
         if grade_match:
             grade_str = re.sub(r'<[^>]+>', '', grade_match.group(1)).strip()
-            
-        details = AssignmentDetails(grade=grade_str, comments=[])
+
+        status_match = re.search(
+            r'<th[^>]*>\s*Estado de la entrega\s*</th>\s*<td[^>]*>(.*?)</td>',
+            html, re.DOTALL,
+        )
+        submission_status = ""
+        if status_match:
+            submission_status = re.sub(r'<[^>]+>', '', status_match.group(1)).strip()
+
+        details = AssignmentDetails(grade=grade_str, comments=[], submission_status=submission_status)
 
         config_match = re.search(r'M\.core_comment\.init\([^,]+,\s*({[^}]+})\);', html)
         if not config_match:

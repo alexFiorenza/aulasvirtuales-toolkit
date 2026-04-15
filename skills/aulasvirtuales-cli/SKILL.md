@@ -100,10 +100,12 @@ Shows the grading table and feedback for a course (like assignments, quizzes, an
 
 Options:
 
+- `--with-status` — Fetches the submission status for each assignment by scraping individual assignment pages. Shows whether each task was submitted (e.g., "Enviado para calificar", "Todavía no se han realizado envíos"). Slower due to additional HTTP requests per assignment.
 - `--with-comments` — Iterates through assignments to extract specific text grades (e.g., "Entrega Muy bien") and fetches internal dynamic submission comments left by professors. Slower runtime due to additional HTTP requests.
 
 ```bash
 aulasvirtuales grades 3641
+aulasvirtuales grades 3641 --with-status
 aulasvirtuales grades 3641 --with-comments
 ```
 
