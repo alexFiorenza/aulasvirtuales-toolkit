@@ -11,7 +11,7 @@ from aulasvirtuales_cli.app import app, console, convert_file, get_client, ocr_c
 
 @app.command()
 def courses() -> None:
-    """List enrolled courses."""
+    """List enrolled courses with their IDs."""
     with console.status("[cyan]📚 Fetching courses...[/cyan]", spinner="dots"):
         client = get_client()
         course_list = client.get_courses()
