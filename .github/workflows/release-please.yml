@@ -22,15 +22,15 @@ jobs:
           manifest-file: .release-please-manifest.json
 
       - name: Checkout Code
-        if: ${{ steps.release.outputs['apps/aulasvirtuales-cli--release_created'] }}
+        if: ${{ steps.release.outputs['apps--aulasvirtuales-cli--release_created'] }}
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update Homebrew Formula
-        if: ${{ steps.release.outputs['apps/aulasvirtuales-cli--release_created'] }}
+        if: ${{ steps.release.outputs['apps--aulasvirtuales-cli--release_created'] }}
         run: |
-          VERSION="${{ steps.release.outputs['apps/aulasvirtuales-cli--version'] }}"
+          VERSION="${{ steps.release.outputs['apps--aulasvirtuales-cli--version'] }}"
           TARBALL_URL="https://github.com/${{ github.repository }}/archive/refs/tags/aulasvirtuales-cli-v${VERSION}.tar.gz"
           
           # Download tarball to compute SHA256
@@ -46,5 +46,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add Formula/aulasvirtuales.rb
-          git commit -m "chore: update Homebrew formula for aulasvirtuales-cli v${VERSION}"
+          git commit -m "chore: update Homebrew formula for aulasvirtuales-cli v${VERSION} [skip ci]"
           git push
