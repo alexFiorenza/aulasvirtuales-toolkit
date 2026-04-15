@@ -19,6 +19,13 @@ from aulasvirtuales.client import (
     Section,
     SubmissionComment,
 )
+from aulasvirtuales.parsers import parse_grade_table
+from aulasvirtuales.services.assignments import AssignmentsService
+from aulasvirtuales.services.courses import CoursesService
+from aulasvirtuales.services.events import EventsService
+from aulasvirtuales.services.forums import ForumsService
+from aulasvirtuales.services.grades import GradesService
+from aulasvirtuales.session import MoodleSession
 
 from tests.conftest import (
     DASHBOARD_HTML,
@@ -40,26 +47,38 @@ from tests.conftest import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+def _make_session() -> MagicMock:
+    """Create a mock MoodleSession."""
+    session = MagicMock(spec=MoodleSession)
+    session.http = MagicMock(spec=httpx.Client)
+    session.sesskey = SESSKEY
+    return session
+
+
 def _make_client(monkeypatch) -> MoodleClient:
-    """Create a MoodleClient with a mocked HTTP client."""
-    mock_response = MagicMock()
-    mock_response.text = DASHBOARD_HTML
+    """Create a MoodleClient with a mocked session."""
+    session = _make_session()
 
-    mock_http = MagicMock(spec=httpx.Client)
-    mock_http.get.return_value = mock_response
-
-    # Bypass __init__ to inject mocks
     client = object.__new__(MoodleClient)
-    client._http = mock_http
-    client._sesskey = SESSKEY
+    client._session = session
+    client._courses = CoursesService(session)
+    client._assignments = AssignmentsService(session)
+    client._forums = ForumsService(session, client._courses)
+    client._events = EventsService(session)
+    client._grades = GradesService(session, client._assignments)
     return client
 
 
 def _setup_ajax(client: MoodleClient, response_data):
-    """Configure the mock HTTP client to return the given AJAX response."""
-    mock_response = MagicMock()
-    mock_response.json.return_value = response_data
-    client._http.post.return_value = mock_response
+    """Configure the mock session to return the given AJAX response.
+
+    Fixtures use the raw AJAX wrapper format ``[{"error": False, "data": ...}]``.
+    Since ``session.ajax()`` already unwraps, we extract ``data`` here.
+    """
+    if isinstance(response_data, list) and response_data:
+        client._session.ajax.return_value = response_data[0]["data"]
+    else:
+        client._session.ajax.return_value = response_data
 
 
 def _setup_get(client: MoodleClient, html: str, url: str | None = None):
@@ -68,7 +87,7 @@ def _setup_get(client: MoodleClient, html: str, url: str | None = None):
     mock_response.text = html
     if url:
         mock_response.url = url
-    client._http.get.return_value = mock_response
+    client._session.http.get.return_value = mock_response
 
 
 # ---------------------------------------------------------------------------
@@ -77,7 +96,7 @@ def _setup_get(client: MoodleClient, html: str, url: str | None = None):
 
 @pytest.mark.unit
 class TestFetchSesskey:
-    def test_fetch_sesskey_success(self, monkeypatch):
+    def test_fetch_sesskey_success(self):
         """Sesskey is correctly extracted from dashboard HTML."""
         mock_response = MagicMock()
         mock_response.text = DASHBOARD_HTML
@@ -85,9 +104,9 @@ class TestFetchSesskey:
         mock_http = MagicMock(spec=httpx.Client)
         mock_http.get.return_value = mock_response
 
-        client = object.__new__(MoodleClient)
-        client._http = mock_http
-        result = client._fetch_sesskey()
+        session = object.__new__(MoodleSession)
+        session.http = mock_http
+        result = session._fetch_sesskey()
 
         assert result == SESSKEY
 
@@ -99,11 +118,11 @@ class TestFetchSesskey:
         mock_http = MagicMock(spec=httpx.Client)
         mock_http.get.return_value = mock_response
 
-        client = object.__new__(MoodleClient)
-        client._http = mock_http
+        session = object.__new__(MoodleSession)
+        session.http = mock_http
 
         with pytest.raises(MoodleClientError, match="Could not extract sesskey"):
-            client._fetch_sesskey()
+            session._fetch_sesskey()
 
 
 # ---------------------------------------------------------------------------
@@ -253,9 +272,8 @@ class TestGetUpcomingEvents:
         assert events[0].action == "Entregar"
 
         # Verify correct AJAX method was called
-        call_args = client._http.post.call_args
-        payload = call_args[1]["json"] if "json" in call_args[1] else call_args[0][1]
-        assert any("by_course" in str(arg) for arg in [call_args])
+        method_arg = client._session.ajax.call_args[0][0]
+        assert "by_course" in method_arg
 
     def test_get_upcoming_events_all(self, monkeypatch):
         """Global events (no course_id) are returned."""
@@ -307,11 +325,9 @@ class TestGetGrades:
         assert grades[2].name == "TPG2"
         assert grades[2].grade == ""
 
-    def test_parse_grade_table_extracts_assign_cmids(self, monkeypatch):
+    def test_parse_grade_table_extracts_assign_cmids(self):
         """Assign cmids are extracted from gradeitemheader links."""
-        client = _make_client(monkeypatch)
-
-        parsed = client._parse_grade_table(SAMPLE_GRADES_ACTION_MENU_HTML)
+        parsed = parse_grade_table(SAMPLE_GRADES_ACTION_MENU_HTML)
 
         assert len(parsed) == 3
         _, cmid0 = parsed[0]
@@ -341,15 +357,14 @@ class TestGetAssignmentDetails:
         """Assignment grade and comments are extracted."""
         client = _make_client(monkeypatch)
 
-        # First call returns assignment page HTML, second call returns comments JSON
         assignment_response = MagicMock()
         assignment_response.text = SAMPLE_ASSIGNMENT_HTML
 
         comments_response = MagicMock()
         comments_response.json.return_value = SAMPLE_COMMENTS_RESPONSE
 
-        client._http.get.return_value = assignment_response
-        client._http.post.return_value = comments_response
+        client._session.http.get.return_value = assignment_response
+        client._session.http.post.return_value = comments_response
 
         details = client.get_assignment_details(1)
 
@@ -367,12 +382,11 @@ class TestGetAssignmentDetails:
         assignment_response = MagicMock()
         assignment_response.text = SAMPLE_ASSIGNMENT_HTML
 
-        client._http.get.return_value = assignment_response
-        client._http.post.side_effect = Exception("AJAX error")
+        client._session.http.get.return_value = assignment_response
+        client._session.http.post.side_effect = Exception("AJAX error")
 
         details = client.get_assignment_details(1)
 
-        # Grade should still be parsed even though comments failed
         assert details.grade == "8.50"
         assert details.comments == []
 
