@@ -18,7 +18,9 @@ classDiagram
         +get_discussion_posts(discussion_id: int) list~ForumPost~
         +get_upcoming_events(course_id: int|None, limit: int) list~Event~
         +get_grades(course_id: int) list~GradeItem~
+        +get_grades_with_status(course_id: int) list~GradeItem~
         +get_assignment_details(assignment_cmid: int) AssignmentDetails
+        -_parse_grade_table(html: str) list~tuple~
     }
 
     class Course {
@@ -74,6 +76,7 @@ classDiagram
         +range: str
         +percentage: str
         +feedback: str
+        +status: str
     }
 
     class SubmissionComment {
@@ -85,6 +88,7 @@ classDiagram
     class AssignmentDetails {
         +grade: str
         +comments: list~SubmissionComment~
+        +submission_status: str
     }
 
     class MoodleClientError {
