@@ -1,4 +1,4 @@
-"""Unit tests for aulasvirtuales_cli.app — CLI commands."""
+"""Unit tests for aulasvirtuales_cli — CLI commands."""
 
 from unittest.mock import MagicMock, patch
 
@@ -22,7 +22,7 @@ class TestVersionFlag:
 
 @pytest.mark.unit
 class TestCoursesCommand:
-    @patch("aulasvirtuales_cli.app._get_client")
+    @patch("aulasvirtuales_cli.commands.courses.get_client")
     def test_courses_command(self, mock_get_client):
         """courses command displays enrolled courses in a table."""
         from aulasvirtuales.client import Course
@@ -44,7 +44,7 @@ class TestCoursesCommand:
 
 @pytest.mark.unit
 class TestResourcesCommand:
-    @patch("aulasvirtuales_cli.app._get_client")
+    @patch("aulasvirtuales_cli.commands.courses.get_client")
     def test_resources_command(self, mock_get_client):
         """resources command displays sections and resources."""
         from aulasvirtuales.client import Resource, Section
@@ -70,7 +70,7 @@ class TestResourcesCommand:
 
 @pytest.mark.unit
 class TestEventsCommand:
-    @patch("aulasvirtuales_cli.app._get_client")
+    @patch("aulasvirtuales_cli.commands.events.get_client")
     def test_events_command(self, mock_get_client):
         """events command displays upcoming events."""
         from aulasvirtuales.client import Event
@@ -93,7 +93,7 @@ class TestEventsCommand:
 
 @pytest.mark.unit
 class TestGradesCommand:
-    @patch("aulasvirtuales_cli.app._get_client")
+    @patch("aulasvirtuales_cli.commands.grades.get_client")
     def test_grades_command(self, mock_get_client):
         """grades command displays grades table."""
         from aulasvirtuales.client import GradeItem
@@ -113,7 +113,7 @@ class TestGradesCommand:
 
 @pytest.mark.unit
 class TestForumsCommand:
-    @patch("aulasvirtuales_cli.app._get_client")
+    @patch("aulasvirtuales_cli.commands.forums.get_client")
     def test_forums_command(self, mock_get_client):
         """forums command lists forums."""
         from aulasvirtuales.client import Resource
@@ -132,8 +132,8 @@ class TestForumsCommand:
 
 @pytest.mark.unit
 class TestConfigCommand:
-    @patch("aulasvirtuales_cli.app.get_download_dir")
-    @patch("aulasvirtuales_cli.app.get_ocr_config")
+    @patch("aulasvirtuales_cli.commands.settings.get_download_dir")
+    @patch("aulasvirtuales_cli.commands.settings.get_ocr_config")
     def test_config_command_show(self, mock_ocr_config, mock_download_dir, tmp_path):
         """config command with no args shows current configuration."""
         mock_download_dir.return_value = tmp_path
@@ -148,9 +148,9 @@ class TestConfigCommand:
 
 @pytest.mark.unit
 class TestStatusCommand:
-    @patch("aulasvirtuales_cli.app.get_token")
-    @patch("aulasvirtuales_cli.app.is_session_valid")
-    @patch("aulasvirtuales_cli.app.get_credentials")
+    @patch("aulasvirtuales_cli.commands.auth.get_token")
+    @patch("aulasvirtuales_cli.commands.auth.is_session_valid")
+    @patch("aulasvirtuales_cli.commands.auth.get_credentials")
     def test_status_logged_in(self, mock_creds, mock_valid, mock_token):
         """status shows logged-in state when session is active."""
         mock_creds.return_value = ("testuser", "testpass")
