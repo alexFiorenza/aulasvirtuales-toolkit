@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.0](https://github.com/alexFiorenza/aulasvirtuales-toolkit/compare/aulasvirtuales-cli-v0.4.0...aulasvirtuales-cli-v0.5.0) (2026-04-15)
+
+
+### Features
+
+* **cli:** add --version flag ([55fa8dd](https://github.com/alexFiorenza/aulasvirtuales-toolkit/commit/55fa8dd3e25cb4ca6418ec8950ad3806b6e7e6cf))
+* **grades:** fix grade extraction and add --with-status for submission status ([e104b91](https://github.com/alexFiorenza/aulasvirtuales-toolkit/commit/e104b9122abc3732b2170fba16957b2cf7643c9e))
+
 ## [0.4.0](https://github.com/alexFiorenza/aulasvirtuales-toolkit/compare/aulasvirtuales-cli-v0.3.0...aulasvirtuales-cli-v0.4.0) (2026-04-15)
 
 
