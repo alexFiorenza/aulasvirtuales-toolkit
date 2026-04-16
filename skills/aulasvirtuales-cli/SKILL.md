@@ -14,7 +14,7 @@ A CLI tool to interact with UTN FRBA's Moodle platform. Installed as `aulasvirtu
 ## Core Agent Behaviors
 
 When interacting with this CLI on behalf of the user, you MUST follow these conversational rules:
-1. **Always Prompt OCR vs Manual Extraction**: Whenever you are asked to download and convert a document (like a PDF) to Markdown, explicitly ask the user *before downloading* if they prefer to use "vision LLM OCR" (`--ocr` flag parameters) or standard fast local parsing (`pymupdf4llm` via default `--to md`).
+1. **Default to Native Conversion; Offer OCR Only When It Fits**: When you're asked to download and convert a document to Markdown, default to native parsing (`--to md`, powered by `pdf-inspector` for PDFs and `mammoth` for DOCX — fast, local, no LLM). Only suggest `--ocr` if the user explicitly mentions it, if the file is an image, or if there's reason to believe the PDF is scanned. The CLI runs a smart classifier gate: if you pass `--ocr` on a text-based PDF it will refuse and tell the user to use `--to md` or add `--force-ocr`. Do **not** add `--force-ocr` just to silence that error; only use it when the user has explicitly asked to OCR anyway.
 2. **Offer to Clean Up**: Once your main task is fully completed and all demanded output has been delivered to the user, politely ask the user if they would like you to clear trailing temporary downloads by running `aulasvirtuales clear-downloads -y` so their disk doesn't fill up.
 
 ## Authentication
@@ -52,20 +52,22 @@ Options:
 
 - `--to FORMAT` — Convert after download. Supported: `.docx` -> `pdf`, `.pdf` -> `md`, `.docx` -> `md` (chains docx->pdf->md), `.pptx` -> `pdf`, `.pptx` -> `md` (chains pptx->pdf->md). `.pptx` conversions require LibreOffice installed. No conversion if already in target format.
 - `-o, --output PATH` — Destination directory or file path (default: `~/aulasvirtuales` or configured dir). File extension = full file path; no extension = directory.
-- `--ocr` — Use a vision LLM to extract text via OCR instead of the default converter. Supports `.pdf`, `.docx`, `.pptx`, and images (`.png`, `.jpg`, `.jpeg`, `.gif`, `.bmp`, `.tiff`, `.webp`). Requires `uv sync --extra ocr`. When `--ocr` is used, `--to` defaults to `md`. Valid OCR output formats: `md`, `txt`.
+- `--ocr` — Use a vision LLM to extract text via OCR instead of the default converter. Supports `.pdf`, `.docx`, `.pptx`, and images (`.png`, `.jpg`, `.jpeg`, `.gif`, `.bmp`, `.tiff`, `.webp`). Requires `uv sync --extra ocr`. When `--ocr` is used, `--to` defaults to `md`. Valid OCR output formats: `md`, `txt`. On PDFs, `--ocr` passes through a classifier gate: text-based PDFs are rejected with a suggestion to drop `--ocr`, mixed PDFs transparently use a hybrid pipeline (native text + vision OCR on scanned pages only).
+- `--force-ocr` — Bypass the classifier gate and run vision OCR even on text-based PDFs. Only use when the user has explicitly asked to OCR a text-based PDF despite the warning. Ignored when `--ocr` is not set.
 - `--ocr-provider PROVIDER` — Override the configured OCR provider for this command (`ollama` or `openrouter`).
 - `--ocr-model MODEL` — Override the configured OCR model for this command.
 
 ```bash
 # OCR examples
-aulasvirtuales download 3641 106231 --ocr                          # OCR to markdown (default)
+aulasvirtuales download 3641 106231 --ocr                          # OCR to markdown (gate may refuse text-based PDFs)
 aulasvirtuales download 3641 106231 --ocr --to txt                  # OCR to plain text
+aulasvirtuales download 3641 106231 --ocr --force-ocr               # bypass the gate (user explicitly asked)
 aulasvirtuales download 3641 106231 --ocr --ocr-provider ollama --ocr-model llava  # one-off override
 ```
 
 ### `aulasvirtuales download-all <course_id> [OPTIONS]`
 
-Downloads every File and Folder from a course. Same options as `download` (including `--ocr`, `--ocr-provider`, `--ocr-model`).
+Downloads every File and Folder from a course. Same options as `download` (including `--ocr`, `--force-ocr`, `--ocr-provider`, `--ocr-model`). The classifier gate runs per file, so a mixed batch of text-based and scanned PDFs is handled correctly without manual intervention.
 
 ```bash
 aulasvirtuales download-all 3641
@@ -165,8 +167,9 @@ aulasvirtuales posts 406838                     # read the thread
 
 ```bash
 aulasvirtuales config --ocr-provider ollama --ocr-model llava   # configure once
-aulasvirtuales download 3641 106231 --ocr                       # OCR to markdown
-aulasvirtuales download-all 3641 --ocr --to txt                 # OCR all files to plain text
+aulasvirtuales download 3641 106231 --ocr                       # OCR to markdown (gate may refuse text-based PDFs)
+aulasvirtuales download 3641 106231 --ocr --force-ocr           # user explicitly wants OCR despite the gate warning
+aulasvirtuales download-all 3641 --ocr --to txt                 # OCR all files to plain text (gate runs per file)
 ```
 
 ## Important Notes
@@ -175,5 +178,7 @@ aulasvirtuales download-all 3641 --ocr --to txt                 # OCR all files 
 - Downloaded files default to `~/aulasvirtuales` or the directory set via `aulasvirtuales config -d`.
 - If a `--to` conversion fails, the CLI shows which extra to install.
 - OCR requires `uv sync --extra ocr`. For `.docx` OCR, also needs `--extra docx` or LibreOffice. For `.pptx` OCR, needs LibreOffice.
+- The OCR classifier gate uses `pdf-inspector` (comes with the `markdown` extra). If the gate is ever skipped because the extra isn't installed, the CLI falls back to the plain vision pipeline and prints a note.
+- Symmetric warning: running `--to md` on a scanned PDF prints a warning and suggests `--ocr` instead of producing an empty file.
 - OCR provider config is stored in `~/.config/aulasvirtuales/config.json` under `ocr.<provider>` as kwargs passed directly to the LangChain class (`ChatOllama`, `ChatOpenRouter`).
 - Session tokens persist in the OS keychain. Auth is automatic.

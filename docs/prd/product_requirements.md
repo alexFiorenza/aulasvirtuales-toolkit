@@ -67,10 +67,10 @@ MCP-compatible AI agents (Claude Desktop, Cursor, Copilot) that need to:
 
 | Conversion | Method | Dependency |
 |---|---|---|
-| PDF → Markdown | Native parsing | pymupdf4llm |
+| PDF → Markdown | Native parsing (Rust, no LLM) | pdf-inspector |
 | DOCX → Markdown | Direct conversion | mammoth |
 | DOCX → PDF | Headless conversion | LibreOffice |
-| PPTX → Markdown | Headless conversion + markdown parsing | LibreOffice + pymupdf4llm |
+| PPTX → Markdown | Headless conversion + markdown parsing | LibreOffice + pdf-inspector |
 | PPTX → PDF | Headless conversion | LibreOffice |
 | `--to pdf` output | Unified flag covering DOCX/PPTX → PDF (and `.pdf` pass-through) | — |
 | Any → Markdown (OCR) | Vision LLM | LangChain + Ollama/OpenRouter |
@@ -84,6 +84,9 @@ MCP-compatible AI agents (Claude Desktop, Cursor, Copilot) that need to:
 | Page-by-page | Process multi-page documents with progress tracking. |
 | Background jobs | MCP server runs OCR in the background with status polling. |
 | Configurable | Provider, model, and API keys configurable via CLI. |
+| Classifier gate | Before running vision OCR on a PDF, classify it with `pdf-inspector`. Refuse `text_based` PDFs and suggest the native path; users can override with `--force-ocr` / `force_ocr=true`. |
+| Hybrid mixed-PDF handling | `mixed` PDFs combine native extraction (text pages) with vision OCR (scanned pages only), cutting LLM calls to the pages that actually need them. |
+| Symmetric warning | `--to md` on a scanned PDF warns and suggests `--ocr` instead of silently producing an empty document. |
 
 ### 4.6 Academic Features
 
