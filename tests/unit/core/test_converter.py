@@ -11,7 +11,6 @@ import pytest
 class TestPdfToMarkdown:
     def test_pdf_to_markdown(self, tmp_path):
         """PDF is converted to markdown string via pymupdf4llm."""
-        # Mock pymupdf4llm as a lazy import inside the function
         mock_module = MagicMock()
         mock_module.to_markdown.return_value = "# Heading\n\nSome content"
 
@@ -64,6 +63,61 @@ class TestConvertAndSave:
 
             assert result == output_dir / "doc.md"
             assert result.exists()
+
+
+@pytest.mark.unit
+class TestDocxToMarkdown:
+    def test_docx_to_markdown_via_mammoth(self, tmp_path):
+        """DOCX is converted to markdown directly via mammoth."""
+        mock_mammoth = MagicMock()
+        mock_mammoth.convert_to_markdown.return_value = MagicMock(
+            value="# Document Title\n\nParagraph content"
+        )
+
+        with patch.dict(sys.modules, {"mammoth": mock_mammoth}):
+            from aulasvirtuales.converter import DocxToMarkdown
+
+            docx_path = tmp_path / "report.docx"
+            docx_path.write_bytes(b"fake docx")
+
+            result = DocxToMarkdown().convert(docx_path)
+
+            assert result == tmp_path / "report.md"
+            assert result.exists()
+            assert result.read_text(encoding="utf-8") == "# Document Title\n\nParagraph content"
+
+    def test_docx_to_markdown_custom_output_dir(self, tmp_path):
+        """Markdown file is saved to custom output directory."""
+        mock_mammoth = MagicMock()
+        mock_mammoth.convert_to_markdown.return_value = MagicMock(value="# Content")
+
+        with patch.dict(sys.modules, {"mammoth": mock_mammoth}):
+            from aulasvirtuales.converter import DocxToMarkdown
+
+            docx_path = tmp_path / "input" / "doc.docx"
+            docx_path.parent.mkdir()
+            docx_path.write_bytes(b"fake")
+
+            output_dir = tmp_path / "output"
+
+            result = DocxToMarkdown().convert(docx_path, output_dir)
+
+            assert result == output_dir / "doc.md"
+            assert result.exists()
+
+
+@pytest.mark.unit
+class TestDocxToPdf:
+    def test_docx_to_pdf_libreoffice_missing(self, monkeypatch):
+        """FileNotFoundError is raised when LibreOffice is not installed."""
+        import shutil
+
+        monkeypatch.setattr(shutil, "which", lambda _: None)
+
+        from aulasvirtuales.converter import docx_to_pdf
+
+        with pytest.raises(FileNotFoundError, match="LibreOffice"):
+            docx_to_pdf(Path("/fake/file.docx"))
 
 
 @pytest.mark.unit

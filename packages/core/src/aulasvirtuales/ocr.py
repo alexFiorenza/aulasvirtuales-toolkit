@@ -100,6 +100,7 @@ async def ocr_and_save(
     output_format: str = "md",
     output_dir: Path | None = None,
     on_page: Callable[[int, int], Awaitable[None]] | None = None,
+    on_status: Callable[[str], Awaitable[None]] | None = None,
 ) -> Path:
     """Convert a file to markdown or plain text using OCR via a vision LLM."""
     llm = _get_llm(provider, model, **(provider_config or {}))
@@ -114,18 +115,32 @@ async def ocr_and_save(
             _ocr_image, file_path.read_bytes(), llm, mime, prompt
         )
     else:
+        if on_status and suffix != ".pdf":
+            await on_status(f"Converting {file_path.name} to PDF")
         pdf_path, cleanup = _ensure_pdf(file_path)
+
+        if on_status:
+            await on_status(f"Rendering {file_path.name} pages")
         images = _pdf_to_images(pdf_path)
         if cleanup:
             pdf_path.unlink(missing_ok=True)
 
         parts = []
         for i, img in enumerate(images):
+            page_num = i + 1
+            total = len(images)
             if on_page:
-                await on_page(i + 1, len(images))
-            parts.append(
-                await asyncio.to_thread(_ocr_image, img, llm, "image/png", prompt)
-            )
+                await on_page(page_num, total)
+            if on_status:
+                await on_status(f"OCR {file_path.name} — page {page_num}/{total}")
+            try:
+                parts.append(
+                    await asyncio.to_thread(_ocr_image, img, llm, "image/png", prompt)
+                )
+            except Exception as exc:
+                raise RuntimeError(
+                    f"OCR failed on page {page_num}/{total}: {exc}"
+                ) from exc
         content = "\n\n---\n\n".join(parts)
 
     out_dir = output_dir or file_path.parent
