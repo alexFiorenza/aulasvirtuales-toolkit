@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.2](https://github.com/alexFiorenza/aulasvirtuales-toolkit/compare/aulasvirtuales-mcp-v0.5.1...aulasvirtuales-mcp-v0.5.2) (2026-04-16)
+
+
+### Code Refactoring
+
+* **core:** replace docx2pdf with mammoth for direct docx-to-markdown conversion ([48dd149](https://github.com/alexFiorenza/aulasvirtuales-toolkit/commit/48dd14974131d83fc6d513b6b88dc4eb5e26c517))
+
 ## [0.5.1](https://github.com/alexFiorenza/aulasvirtuales-toolkit/compare/aulasvirtuales-mcp-v0.5.0...aulasvirtuales-mcp-v0.5.1) (2026-04-15)
 
 
