@@ -15,7 +15,7 @@ Authentication is handled automatically via stored credentials in the OS keychai
 
 When interacting with this MCP server on behalf of the user, you MUST follow these conversational rules:
 
-1. **Always Prompt OCR vs Native Extraction**: Whenever the user wants to download and convert a document to Markdown, explicitly ask them *before downloading* if they prefer to use "vision LLM OCR" (`ocr=true` with `ocr_provider`/`ocr_model` parameters) or standard fast local parsing (native `to="md"` via `pymupdf4llm`). Do NOT assume one or the other.
+1. **Default to Native Conversion; Offer OCR Only When It Fits**: When the user asks to download and convert a document to Markdown, default to native parsing (`to="md"`, powered by `pdf-inspector` for PDFs and `mammoth` for DOCX). Only suggest OCR (`ocr=true`) if the user explicitly mentions it, if the file is an image, or if there's reason to believe the PDF is scanned (e.g., the user says "escaneado", the preview shows no selectable text, or native conversion returned suspiciously little content). The MCP server runs a smart classifier gate: if you call `ocr=true` on a text-based PDF it will refuse and ask you to use native conversion instead — do not pass `force_ocr=true` just to silence that error; only use `force_ocr=true` when the user has explicitly asked to run OCR anyway.
 2. **Offer to Clean Up Downloads**: Once your main task is fully completed and all demanded output has been delivered to the user, politely ask if they would like you to clear temporary downloads from the download directory so their disk doesn't fill up. If they agree, call `clear_downloads(force=true)`.
 3. **Do NOT Rapid-Poll OCR Status**: OCR jobs process each page through a vision LLM and take a long time. After starting an OCR job, wait **at least 30 seconds** before the first status check, and **at least 20 seconds** between subsequent checks. Always tell the user the current progress when you check (e.g. "processing page 3/10") instead of silently polling. Do not call `ocr_status` more than once per message turn.
 
@@ -53,11 +53,13 @@ Shows all messages in a forum discussion thread, including author, date, subject
 
 Reads a file from the local downloads directory (`~/aulasvirtuales` by default). If no filename is given, lists all available files. Text files are returned as text, PDFs as extracted text, and images as image content. Use this after `download` to read a converted file and pass its content to other tools or MCP servers (e.g. saving to Obsidian).
 
-### `download(course_id, resource_id, output?, to?, file?, ocr?, ocr_provider?, ocr_model?)`
+### `download(course_id, resource_id, output?, to?, file?, ocr?, force_ocr?, ocr_provider?, ocr_model?)`
 
 Full-featured download tool, equivalent to the CLI's `aulasvirtuales download` command. Supports format conversion and OCR.
 
 When `ocr=true`, the download completes immediately and the OCR conversion runs **in the background**. The tool returns a `job_id` that you must poll with `ocr_status` until it completes.
+
+**Classifier gate (PDFs only)**: when `ocr=true` targets a PDF, the server first classifies it. If it's `text_based`, the job is rejected with a message asking you to retry without OCR or with `force_ocr=true`. If it's `mixed`, the job runs a hybrid pipeline (native extraction for text pages, vision LLM only for scanned pages) — this is automatic and you don't need any extra flag. Native `to="md"` on a scanned PDF warns and suggests switching to `ocr=true`.
 
 **Parameters:**
 
@@ -67,6 +69,7 @@ When `ocr=true`, the download completes immediately and the OCR conversion runs 
 - `to` (str, optional) — Convert after download. Supported: `pdf`, `md`, `txt`. Conversion chains: `.docx`→`pdf`, `.docx`→`md`, `.pdf`→`md`, `.pptx`→`pdf`, `.pptx`→`md`.
 - `file` (str, optional) — Filter: only download files whose name contains this substring (case-insensitive).
 - `ocr` (bool, optional) — Use a vision LLM for OCR instead of native parsing. Defaults output to `md` if `to` is not set.
+- `force_ocr` (bool, optional) — Skip the classifier gate and force vision OCR even on text-based PDFs. Only pass `true` when the user has explicitly asked for OCR despite the warning.
 - `ocr_provider` (str, optional) — OCR provider override (`ollama`, `openrouter`). Falls back to CLI config.
 - `ocr_model` (str, optional) — OCR model name override. Falls back to CLI config.
 
@@ -100,13 +103,14 @@ Clears all downloaded files from the configured download directory (`~/aulasvirt
 
 1. Call `get_courses` to find the course ID
 2. Call `get_course_resources(course_id)` to find the resource ID
-3. **Ask the user** if they prefer OCR or native parsing for markdown conversion
-4. **Native conversion:** Call `download(course_id, resource_id, to="md")` — synchronous, result is immediate
-5. **OCR conversion:**
+3. **Default to native conversion.** Only offer OCR if the user explicitly asks or if the file is an image / obvious scan.
+4. **Native conversion:** Call `download(course_id, resource_id, to="md")` — synchronous, result is immediate. If this fails or the server warns that the PDF is scanned, retry with `ocr=true`.
+5. **OCR conversion (only when justified):**
    a. Call `download(course_id, resource_id, ocr=true)` — returns immediately with a `job_id`
-   b. **Wait before polling**: OCR processes each page through a vision LLM, which takes significant time. Do NOT poll immediately or in rapid succession. Wait **at least 30 seconds** before the first `ocr_status` check, and **at least 20 seconds** between subsequent checks. Inform the user that OCR is running and you'll check back shortly — do not silently poll in a loop.
-   c. Call `ocr_status(job_id)` — if still `processing`, tell the user the current progress (e.g. "page 3/10") and wait another 20–30 seconds before checking again.
-   d. Once the status is `completed` or `failed`, proceed accordingly.
+   b. **If the server rejects with "PDF is text-based"**: the PDF does not need OCR. Retry with native `to="md"` instead. Only pass `force_ocr=true` if the user has explicitly insisted on OCR despite the warning.
+   c. **Wait before polling**: OCR processes each page through a vision LLM, which takes significant time. Do NOT poll immediately or in rapid succession. Wait **at least 30 seconds** before the first `ocr_status` check, and **at least 20 seconds** between subsequent checks. Inform the user that OCR is running and you'll check back shortly — do not silently poll in a loop.
+   d. Call `ocr_status(job_id)` — if still `processing`, tell the user the current progress (e.g. "page 3/10") and wait another 20–30 seconds before checking again.
+   e. Once the status is `completed` or `failed`, proceed accordingly.
 6. Call `read_downloaded_file("filename.md")` to read the converted file
 7. Deliver the content or pass it to another MCP (e.g. Obsidian)
 8. **Ask the user** if they want to clean up downloads, and if yes call `clear_downloads(force=true)`

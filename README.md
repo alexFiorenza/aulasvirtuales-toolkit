@@ -143,11 +143,14 @@ aulasvirtuales resources <course_id>
 ```bash
 aulasvirtuales download <course_id> <resource_id>
 
-# Convert to markdown (native)
+# Convert to markdown (native, fast — uses pdf-inspector for text-based PDFs)
 aulasvirtuales download <course_id> <resource_id> --to md
 
-# Convert to markdown (OCR via vision LLM)
+# Convert to markdown (OCR via vision LLM — only runs on scanned PDFs)
 aulasvirtuales download <course_id> <resource_id> --ocr
+
+# Force OCR on a text-based PDF (skips the smart gate)
+aulasvirtuales download <course_id> <resource_id> --ocr --force-ocr
 
 # Custom output directory
 aulasvirtuales download <course_id> <resource_id> -o ~/notes
@@ -213,6 +216,18 @@ aulasvirtuales config --ocr-provider ollama --ocr-model llava
 aulasvirtuales config --ocr-provider openrouter --ocr-model google/gemini-flash-1.5 --openrouter-api-key sk-...
 ```
 
+### Smart OCR Gate
+
+`--ocr` classifies the PDF with `pdf-inspector` before running the vision pipeline:
+
+| PDF type | What happens |
+|---|---|
+| `text_based` | OCR is refused — the native `--to md` path is faster and equivalent. Use `--force-ocr` to override. |
+| `mixed` | Hybrid run — native extraction for text pages, vision LLM for pages that actually need OCR. |
+| `scanned` / `image_based` | Full vision OCR, as before. |
+
+The reverse also applies: `--to md` on a PDF classified as `scanned` warns that the output will be empty and points at `--ocr`.
+
 ## Project structure
 
 ```
@@ -222,7 +237,7 @@ packages/
         ├── auth.py                  # SSO login via Playwright + credential/session management
         ├── client.py                # Moodle HTTP/AJAX client
         ├── config.py                # Persistent configuration
-        ├── converter.py             # File format conversion (PDF→md, DOCX→PDF, PPTX→PDF)
+        ├── converter.py             # File format conversion (PDF→md via pdf-inspector, DOCX→md via mammoth, PPTX→PDF via LibreOffice)
         ├── downloader.py            # File download from Moodle
         └── ocr.py                   # OCR via vision LLMs (LangChain)
 apps/
@@ -254,9 +269,11 @@ skills/
 
 | Extra | Dependencies | Purpose |
 |---|---|---|
-| `markdown` | pymupdf4llm | Native PDF → markdown conversion |
-| `docx` | docx2pdf | DOCX → PDF conversion |
+| `markdown` | pdf-inspector | Native PDF → markdown conversion + PDF classification (OCR gate) |
+| `docx` | mammoth | DOCX → markdown conversion (pure Python, no system deps) |
 | `ocr` | langchain-core, langchain-ollama, langchain-openrouter, pymupdf | OCR via vision LLMs |
+
+> `pdf-inspector` only publishes wheels for Python 3.12 at the moment. On 3.11 or 3.13 `pip` will try to build from source and will need a Rust toolchain. If you don't plan to convert PDFs, you can skip the `markdown` extra.
 
 ### Optional: LibreOffice (for .pptx conversion)
 

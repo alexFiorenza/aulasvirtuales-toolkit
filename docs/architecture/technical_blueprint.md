@@ -13,7 +13,8 @@
 | Interactive Shell | prompt-toolkit | REPL with autocomplete and history |
 | Interactive TUI | Textual | In-REPL configuration and folder-file selection screens |
 | MCP Framework | FastMCP | Model Context Protocol server |
-| PDF Processing | pymupdf4llm / PyMuPDF | PDF→Markdown + PDF→Image rendering |
+| PDF Parsing & Classification | pdf-inspector (Rust) | PDF→Markdown + detection of text/scanned/mixed PDFs (powers the OCR gate) |
+| PDF→Image Rendering | PyMuPDF | Page rasterization for the vision OCR pipeline |
 | Document Conversion | mammoth (DOCX→MD), LibreOffice (DOCX/PPTX→PDF) | Native document conversion |
 | OCR | LangChain (Ollama, OpenRouter) | Vision LLM-based text extraction |
 | Configuration | JSON | Persistent user settings |
@@ -145,7 +146,7 @@ MCP: Return as tool result
 
 ```
                     ┌──────────────┐
-           .pdf ───→│ pymupdf4llm  │───→ .md
+           .pdf ───→│ pdf-inspector│───→ .md
                     └──────────────┘
 
                     ┌──────────────┐
@@ -158,7 +159,7 @@ MCP: Return as tool result
                     └──────────────┘
 
                     ┌──────────────┐     ┌──────────────┐
-          .pptx ───→│ LibreOffice  │───→│ pymupdf4llm  │───→ .md
+          .pptx ───→│ LibreOffice  │───→│ pdf-inspector│───→ .md
                     │  (headless)  │     └──────────────┘
                     └──────────────┘
 
@@ -174,13 +175,15 @@ MCP: Return as tool result
 
 | Key | Strategy | Backing library |
 |---|---|---|
-| `(".pdf", "md")` | `PdfToMarkdown` | `pymupdf4llm` |
+| `(".pdf", "md")` | `PdfToMarkdown` | `pdf-inspector` (Rust; traditional PDF parsing, no LLM) |
 | `(".docx", "md")` | `DocxToMarkdown` | `mammoth` (pure Python, no system deps) |
 | `(".docx", "pdf")` | `DocxToPdf` | LibreOffice headless |
-| `(".pptx", "md")` | `PptxToMarkdown` | LibreOffice → PyMuPDF4LLM (chained) |
+| `(".pptx", "md")` | `PptxToMarkdown` | LibreOffice → `pdf-inspector` (chained) |
 | `(".pptx", "pdf")` | `PptxToPdf` | LibreOffice headless |
 
 Same-format requests (e.g., a `.pdf` file asked to become `pdf`) short-circuit in the CLI wrapper (`convert_file`) before hitting the dispatcher.
+
+When `PdfToMarkdown` receives a PDF that `pdf-inspector` classifies as `scanned` or `image_based`, the CLI wrapper emits a warning and points the user at `--ocr` — the native path would otherwise produce an empty document. This is the symmetric counterpart of the OCR gate (§5.2).
 
 ### 5.1.2 Batch Error Handling
 
@@ -188,17 +191,40 @@ Same-format requests (e.g., a `.pdf` file asked to become `pdf`) short-circuit i
 
 ### 5.2 OCR Conversion
 
+OCR requests are not executed blindly. The pipeline first asks `pdf-inspector` what kind of PDF it is and dispatches accordingly:
+
 ```
-                    ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-.pdf/.docx/.pptx ──→│  Convert to  │───→│   PyMuPDF    │───→│  Vision LLM  │───→ .md/.txt
-                    │   PDF first  │     │ (page→image) │     │  (per page)  │
-                    └──────────────┘     └──────────────┘     └──────────────┘
+                                                 ┌── text_based ──→  refuse (suggest --to md, or --force-ocr to override)
+                                                 │
+.pdf/.docx/.pptx ──→ Convert to PDF ──→ classify ┼── mixed      ──→  hybrid: native text for clean pages,
+                     (if not .pdf)      via      │                    vision LLM only for pages_needing_ocr
+                                     pdf-inspector│
+                                                 └── scanned /      → full vision pipeline (render every page,
+                                                    image_based /     send to vision LLM)
+                                                    unknown
+
+                    ┌──────────────┐     ┌──────────────┐
+  vision pipeline:  │   PyMuPDF    │───→│  Vision LLM  │───→ .md/.txt
+                    │ (page→image) │     │  (per page)  │
+                    └──────────────┘     └──────────────┘
 
                     ┌──────────────┐
      .png/.jpg ────→│  Vision LLM  │───→ .md/.txt
                     │  (direct)    │
                     └──────────────┘
 ```
+
+### 5.2.1 Classifier Gate
+
+The gate is the behavior that protects users (and tokens) from pointless OCR runs and from scanned PDFs silently yielding empty markdown.
+
+| Input classification | Gate decision | Override |
+|---|---|---|
+| `text_based` | Refuse. The native path is orders of magnitude faster and produces equivalent markdown. | CLI `--force-ocr` / MCP `force_ocr=true` |
+| `mixed` | Proceed with hybrid extraction. | — |
+| `scanned` / `image_based` / `unknown` | Proceed with full vision pipeline. | — |
+
+The reverse gate lives in §5.1: `--to md` on a `scanned` PDF warns and exits instead of writing an empty file.
 
 ### OCR Provider Architecture
 
