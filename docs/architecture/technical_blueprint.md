@@ -11,9 +11,10 @@
 | Credential Storage | keyring | OS keychain integration |
 | CLI Framework | Typer + Rich | Terminal interface with formatted output |
 | Interactive Shell | prompt-toolkit | REPL with autocomplete and history |
+| Interactive TUI | Textual | In-REPL configuration and folder-file selection screens |
 | MCP Framework | FastMCP | Model Context Protocol server |
 | PDF Processing | pymupdf4llm / PyMuPDF | PDF→Markdown + PDF→Image rendering |
-| Document Conversion | docx2pdf, LibreOffice | DOCX→PDF, PPTX→PDF |
+| Document Conversion | mammoth (DOCX→MD), LibreOffice (DOCX/PPTX→PDF) | Native document conversion |
 | OCR | LangChain (Ollama, OpenRouter) | Vision LLM-based text extraction |
 | Configuration | JSON | Persistent user settings |
 
@@ -77,6 +78,17 @@ The Moodle instance at UTN FRBA uses **Keycloak SSO** with OAuth2. There is no p
 - **Expired**: Cookie exists but GET `/my/` redirects (302). Triggers automatic re-login.
 - **Missing**: No cookie stored. Requires user login.
 
+### Error States
+
+The login flow distinguishes between two failure modes so the CLI can surface actionable messages instead of a raw Playwright traceback:
+
+| Exception | Trigger | CLI message |
+|---|---|---|
+| `InvalidCredentialsError` | Keycloak form returns an error element (e.g., `#input-error`) after submitting credentials. | `❌ Usuario o contraseña incorrectos.` |
+| `AuthenticationError` | SSO page did not load, network timeout, redirect never completed, or no `MoodleSession` cookie was extracted. | `❌ Error de autenticación: …` |
+
+Both are raised from `packages/core/src/aulasvirtuales/auth.py::login` and caught by `apps/aulasvirtuales-cli/src/aulasvirtuales_cli/commands/auth.py::login_cmd` and the auto-relogin path in `apps/aulasvirtuales-cli/src/aulasvirtuales_cli/app.py::get_client`. When auto-relogin hits `InvalidCredentialsError` (stored password no longer valid), the CLI prompts the user to run `aulasvirtuales login` again.
+
 ## 4. Data Flow
 
 ### Moodle Interaction Model
@@ -136,15 +148,43 @@ MCP: Return as tool result
            .pdf ───→│ pymupdf4llm  │───→ .md
                     └──────────────┘
 
-                    ┌──────────────┐     ┌──────────────┐
-          .docx ───→│   docx2pdf   │───→│ pymupdf4llm  │───→ .md
-                    └──────────────┘     └──────────────┘
+                    ┌──────────────┐
+          .docx ───→│   mammoth    │───→ .md
+                    └──────────────┘
+
+                    ┌──────────────┐
+          .docx ───→│ LibreOffice  │───→ .pdf
+                    │  (headless)  │
+                    └──────────────┘
 
                     ┌──────────────┐     ┌──────────────┐
           .pptx ───→│ LibreOffice  │───→│ pymupdf4llm  │───→ .md
                     │  (headless)  │     └──────────────┘
                     └──────────────┘
+
+                    ┌──────────────┐
+          .pptx ───→│ LibreOffice  │───→ .pdf
+                    │  (headless)  │
+                    └──────────────┘
 ```
+
+### 5.1.1 Strategy Dispatcher
+
+`packages/core/src/aulasvirtuales/converter.py` exposes a single `convert(input, to_format, ...)` entry point that delegates to a `(extension, target_format) → ConversionStrategy` table:
+
+| Key | Strategy | Backing library |
+|---|---|---|
+| `(".pdf", "md")` | `PdfToMarkdown` | `pymupdf4llm` |
+| `(".docx", "md")` | `DocxToMarkdown` | `mammoth` (pure Python, no system deps) |
+| `(".docx", "pdf")` | `DocxToPdf` | LibreOffice headless |
+| `(".pptx", "md")` | `PptxToMarkdown` | LibreOffice → PyMuPDF4LLM (chained) |
+| `(".pptx", "pdf")` | `PptxToPdf` | LibreOffice headless |
+
+Same-format requests (e.g., a `.pdf` file asked to become `pdf`) short-circuit in the CLI wrapper (`convert_file`) before hitting the dispatcher.
+
+### 5.1.2 Batch Error Handling
+
+`download_all` iterates over every downloadable resource in a course. When a single file's extension has no matching strategy (e.g., `.xlsx` with `--to pdf`) the conversion is skipped with an informational log and the batch continues with the next file. This prevents one unsupported file from aborting a multi-gigabyte download. Single-resource `download` still fails loudly on unsupported conversions so the user gets immediate feedback.
 
 ### 5.2 OCR Conversion
 
@@ -215,7 +255,7 @@ ocr.py
 
 | Module | Pattern | Notes |
 |---|---|---|
-| `auth.py` | Raises `AuthenticationError` | Clear, specific exception |
+| `auth.py` | Raises `AuthenticationError` or `InvalidCredentialsError` | Keycloak error element detection to distinguish wrong-credentials from SSO/network failure |
 | `client.py` | Raises `MoodleClientError` on AJAX errors | Catches API-level errors |
 | `client.py` | `except Exception: pass` in `get_assignment_details` | Silences comment fetch failures |
 | `converter.py` | Raises `FileNotFoundError` for missing LibreOffice | Actionable error message |
@@ -228,3 +268,37 @@ ocr.py
 - No retry logic for transient network failures.
 - No logging framework configured — errors are either printed (CLI) or silently caught.
 - HTML parsing with regex is fragile and may break if Moodle updates its templates.
+
+## 8. Interactive UX Layer
+
+Interactive Textual screens are reserved for the REPL, where a human user is guaranteed to be present. The REPL loop sets an environment variable that commands can consult to decide whether to launch a TUI:
+
+```python
+# repl.py::start_repl
+os.environ["AULASVIRTUALES_REPL"] = "1"
+try:
+    ...  # prompt loop
+finally:
+    os.environ.pop("AULASVIRTUALES_REPL", None)
+
+# app.py
+def is_repl_context() -> bool:
+    return os.environ.get("AULASVIRTUALES_REPL") == "1"
+```
+
+### Screens
+
+| Screen | Module | Launched by |
+|---|---|---|
+| Config form | `aulasvirtuales_cli/tui/config_screen.py` | `config` command with no flags in REPL, or `--ui` anywhere |
+| Folder file selector | `aulasvirtuales_cli/tui/file_selector.py` | `download <folder>` with no `--file` filter in REPL, or `--select` anywhere |
+
+### Override flags
+
+| Flag | Effect |
+|---|---|
+| `config --ui` | Force the config screen outside the REPL. |
+| `download --select` | Force the file selector outside the REPL. |
+| `download --all` | Skip the file selector inside the REPL. |
+
+See [ADR 007](../adr/007-textual-for-interactive-tui.md) and [ADR 008](../adr/008-repl-only-interactive-gui.md) for the full rationale.

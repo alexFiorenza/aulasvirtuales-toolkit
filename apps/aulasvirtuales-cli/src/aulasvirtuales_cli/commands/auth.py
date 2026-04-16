@@ -1,6 +1,8 @@
 import typer
 
 from aulasvirtuales.auth import (
+    AuthenticationError,
+    InvalidCredentialsError,
     delete_credentials,
     delete_token,
     get_credentials,
@@ -21,10 +23,18 @@ def login_cmd() -> None:
     username = console.input("[cyan]Username:[/cyan] ")
     password = getpass.getpass("Password: ")
 
-    with console.status("[yellow]🔐 Authenticating...[/yellow]", spinner="dots"):
-        token = login(username, password)
-        save_credentials(username, password)
-        save_token(token)
+    try:
+        with console.status("[yellow]🔐 Authenticating...[/yellow]", spinner="dots"):
+            token = login(username, password)
+            save_credentials(username, password)
+            save_token(token)
+    except InvalidCredentialsError:
+        console.print("❌ Usuario o contraseña incorrectos.", style="red")
+        raise typer.Exit(1)
+    except AuthenticationError as e:
+        console.print(f"❌ Error de autenticación: {e}", style="red")
+        raise typer.Exit(1)
+
     console.print("✅ Logged in successfully. Credentials stored in keychain.", style="green")
 
 

@@ -6,7 +6,16 @@ from rich.table import Table
 
 from aulasvirtuales.config import get_download_dir
 from aulasvirtuales.downloader import download_file, filename_from_url, get_resource_files
-from aulasvirtuales_cli.app import app, console, convert_file, get_client, ocr_convert_file, resolve_ocr_config
+from aulasvirtuales_cli.app import (
+    app,
+    console,
+    convert_file,
+    convert_file_best_effort,
+    get_client,
+    is_repl_context,
+    ocr_convert_file,
+    resolve_ocr_config,
+)
 
 
 @app.command()
@@ -60,7 +69,7 @@ def download(
     ),
     to: str = typer.Option(
         None, "--to",
-        help="Convert to format after download (pdf, md, txt)",
+        help="Convert to format (md | pdf). Supported: pdf→md, docx→md|pdf, pptx→md|pdf. Use --ocr for images or txt output.",
     ),
     file: str = typer.Option(
         None, "--file", "-f",
@@ -77,6 +86,14 @@ def download(
     ocr_model: str = typer.Option(
         None, "--ocr-model",
         help="OCR model name override",
+    ),
+    all_files: bool = typer.Option(
+        False, "--all",
+        help="Download all files in a folder without prompting (skip interactive selector)",
+    ),
+    select: bool = typer.Option(
+        False, "--select",
+        help="Force the interactive file selector even outside the REPL",
     ),
 ) -> None:
     """Download a resource (file or folder) from a course."""
@@ -125,6 +142,25 @@ def download(
         console.print("No downloadable files found.", style="red")
         raise typer.Exit(1)
 
+    should_prompt = (
+        resource.module == "folder"
+        and len(file_urls) > 1
+        and not file
+        and not all_files
+        and (select or is_repl_context())
+    )
+    if should_prompt:
+        from aulasvirtuales_cli.tui.file_selector import select_files
+        named = [(filename_from_url(url), url) for url in file_urls]
+        selected = select_files(named)
+        if selected is None:
+            console.print("Cancelled.", style="dim")
+            raise typer.Exit(0)
+        if not selected:
+            console.print("No files selected.", style="yellow")
+            raise typer.Exit(0)
+        file_urls = selected
+
     if file:
         pattern = file.lower()
         file_urls = [
@@ -163,7 +199,7 @@ def download_all(
     output: Path = typer.Option(None, "--output", "-o", help="Download directory"),
     to: str = typer.Option(
         None, "--to",
-        help="Convert to format after download (pdf, md, txt)",
+        help="Convert to format (md | pdf). Supported: pdf→md, docx→md|pdf, pptx→md|pdf. Use --ocr for images or txt output.",
     ),
     ocr: bool = typer.Option(
         False, "--ocr",
@@ -233,7 +269,7 @@ def download_all(
                     ocr_convert_file(path, to, dest, provider, model, provider_kwargs)
                     progress.start()
                 elif to:
-                    convert_file(path, to, dest)
+                    convert_file_best_effort(path, to, dest)
 
             progress.advance(resource_task)
 

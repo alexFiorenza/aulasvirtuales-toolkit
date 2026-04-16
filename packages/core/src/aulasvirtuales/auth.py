@@ -1,13 +1,24 @@
 import httpx
 import keyring
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import sync_playwright
 
 BASE_URL = "https://aulasvirtuales.frba.utn.edu.ar"
 LOGIN_URL = f"{BASE_URL}/login/index.php"
 SERVICE_NAME = "aulasvirtuales-cli"
 
+KEYCLOAK_ERROR_SELECTORS = (
+    "#input-error",
+    ".alert-error",
+    "span.kc-feedback-text",
+)
+
 
 class AuthenticationError(Exception):
+    pass
+
+
+class InvalidCredentialsError(AuthenticationError):
     pass
 
 
@@ -41,27 +52,52 @@ def login(username: str, password: str, headless: bool = True) -> str:
         context = browser.new_context()
         page = context.new_page()
 
-        page.goto(LOGIN_URL)
-        page.click("a.btn.btn-primary.btn-lg[href*='oauth2']")
+        try:
+            page.goto(LOGIN_URL)
+            page.click("a.btn.btn-primary.btn-lg[href*='oauth2']")
 
-        page.wait_for_selector("#username", timeout=15000)
-        page.fill("#username", username)
-        page.fill("#outlined-adornment-password", password)
-        page.click("button:has-text('Iniciar sesión')")
+            try:
+                page.wait_for_selector("#username", timeout=15000)
+            except PlaywrightTimeoutError:
+                raise AuthenticationError(
+                    "El portal SSO de UTN no respondió. Verificá tu conexión "
+                    "o que aulasvirtuales.frba.utn.edu.ar esté operativo."
+                )
 
-        page.wait_for_url(f"{BASE_URL}/**", timeout=15000)
+            page.fill("#username", username)
+            page.fill("#outlined-adornment-password", password)
+            page.click("button:has-text('Iniciar sesión')")
 
-        cookies = context.cookies(BASE_URL)
-        session_cookie = next(
-            (c["value"] for c in cookies if c["name"] == "MoodleSession"),
-            None,
-        )
-        browser.close()
+            try:
+                page.wait_for_url(f"{BASE_URL}/**", timeout=15000)
+            except PlaywrightTimeoutError:
+                if _has_keycloak_error(page):
+                    raise InvalidCredentialsError(
+                        "Usuario o contraseña incorrectos"
+                    )
+                raise AuthenticationError(
+                    f"Login no completó (URL actual: {page.url})"
+                )
+
+            cookies = context.cookies(BASE_URL)
+            session_cookie = next(
+                (c["value"] for c in cookies if c["name"] == "MoodleSession"),
+                None,
+            )
+        finally:
+            browser.close()
 
     if not session_cookie:
         raise AuthenticationError("No MoodleSession cookie found after login")
 
     return session_cookie
+
+
+def _has_keycloak_error(page) -> bool:
+    for selector in KEYCLOAK_ERROR_SELECTORS:
+        if page.query_selector(selector):
+            return True
+    return False
 
 
 def save_token(token: str) -> None:

@@ -10,7 +10,7 @@ from aulasvirtuales.config import (
     set_ocr_provider,
     set_ocr_provider_kwarg,
 )
-from aulasvirtuales_cli.app import app, console
+from aulasvirtuales_cli.app import app, console, is_repl_context
 
 
 @app.command()
@@ -20,8 +20,20 @@ def config(
     ocr_model: str = typer.Option(None, "--ocr-model", help="Set OCR model name"),
     openrouter_api_key: str = typer.Option(None, "--openrouter-api-key", help="Set OpenRouter API key"),
     ollama_base_url: str = typer.Option(None, "--ollama-base-url", help="Set Ollama base URL"),
+    ui: bool = typer.Option(False, "--ui", help="Launch the interactive Textual configuration screen"),
 ) -> None:
     """View or update CLI configuration."""
+    no_flags = all(
+        v is None
+        for v in (download_dir, ocr_provider, ocr_model, openrouter_api_key, ollama_base_url)
+    )
+
+    if ui or (is_repl_context() and no_flags):
+        from aulasvirtuales_cli.tui.config_screen import ConfigApp
+
+        ConfigApp().run()
+        return
+
     changed = False
 
     if download_dir is not None:

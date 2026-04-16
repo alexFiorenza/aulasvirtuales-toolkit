@@ -24,3 +24,5 @@ Welcome to the documentation for **aulasvirtuales-toolkit** — a toolkit to int
 | [004](adr/004-html-scraping-vs-moodle-api.md) | HTML scraping vs Moodle Web Services API | Accepted |
 | [005](adr/005-langchain-for-ocr-pipeline.md) | LangChain for the OCR pipeline | Accepted |
 | [006](adr/006-fastmcp-as-mcp-framework.md) | FastMCP as MCP framework | Accepted |
+| [007](adr/007-textual-for-interactive-tui.md) | Textual for interactive TUI screens | Accepted |
+| [008](adr/008-repl-only-interactive-gui.md) | REPL-only interactive GUI screens | Accepted |
