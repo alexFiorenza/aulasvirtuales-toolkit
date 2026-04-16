@@ -194,3 +194,87 @@ class TestOcrAndSave:
 
         with pytest.raises(RuntimeError, match="page 2/3"):
             await ocr_and_save(pdf_path, "ollama", "llava", output_dir=tmp_path)
+
+
+@pytest.mark.unit
+class TestClassifierGate:
+    @patch("aulasvirtuales.ocr._get_llm")
+    async def test_refuses_text_based_pdf_without_force(self, mock_get_llm, tmp_path):
+        """OcrGateRefusalError is raised on a text-based PDF unless force=True."""
+        from aulasvirtuales.ocr import OcrGateRefusalError, ocr_and_save
+
+        mock_get_llm.return_value = MagicMock()
+
+        pdf_path = tmp_path / "report.pdf"
+        pdf_path.write_bytes(b"fake pdf")
+
+        verdict = MagicMock(pdf_type="text_based", confidence=0.95)
+        with patch("aulasvirtuales.converter.classify_pdf", return_value=verdict):
+            with pytest.raises(OcrGateRefusalError):
+                await ocr_and_save(pdf_path, "ollama", "llava", output_dir=tmp_path)
+
+    @patch("aulasvirtuales.ocr._get_llm")
+    @patch("aulasvirtuales.ocr._pdf_to_images")
+    async def test_force_overrides_gate_for_text_based(
+        self, mock_pdf_to_images, mock_get_llm, tmp_path
+    ):
+        """force=True runs the full vision pipeline even on text-based PDFs."""
+        from aulasvirtuales.ocr import ocr_and_save
+
+        mock_llm = MagicMock()
+        mock_llm.invoke.return_value = MagicMock(content="Forced OCR page")
+        mock_get_llm.return_value = mock_llm
+        mock_pdf_to_images.return_value = [b"img1"]
+
+        pdf_path = tmp_path / "report.pdf"
+        pdf_path.write_bytes(b"fake pdf")
+
+        verdict = MagicMock(pdf_type="text_based", confidence=0.95)
+        with patch("aulasvirtuales.converter.classify_pdf", return_value=verdict):
+            result = await ocr_and_save(
+                pdf_path, "ollama", "llava", output_dir=tmp_path, force=True
+            )
+
+        assert result.exists()
+        assert "Forced OCR page" in result.read_text(encoding="utf-8")
+
+    @patch("aulasvirtuales.ocr._get_llm")
+    @patch("aulasvirtuales.ocr._render_pdf_pages")
+    async def test_mixed_pdf_uses_hybrid_pipeline(
+        self, mock_render_pages, mock_get_llm, tmp_path
+    ):
+        """mixed PDFs combine native extraction with vision OCR per page."""
+        from aulasvirtuales.ocr import ocr_and_save
+
+        mock_llm = MagicMock()
+        mock_llm.invoke.return_value = MagicMock(content="VISION_PAGE_2")
+        mock_get_llm.return_value = mock_llm
+        mock_render_pages.return_value = {2: b"scanned_png"}
+
+        pdf_path = tmp_path / "mixed.pdf"
+        pdf_path.write_bytes(b"fake pdf")
+
+        verdict = MagicMock(
+            pdf_type="mixed",
+            page_count=3,
+            pages_needing_ocr=[2],
+            confidence=0.8,
+        )
+
+        mock_inspector = MagicMock()
+        mock_inspector.process_pdf.side_effect = [
+            MagicMock(markdown="NATIVE_PAGE_1"),
+            MagicMock(markdown="NATIVE_PAGE_3"),
+        ]
+
+        import sys
+        with patch("aulasvirtuales.converter.classify_pdf", return_value=verdict), \
+             patch.dict(sys.modules, {"pdf_inspector": mock_inspector}):
+            result = await ocr_and_save(pdf_path, "ollama", "llava", output_dir=tmp_path)
+
+        content = result.read_text(encoding="utf-8")
+        assert "NATIVE_PAGE_1" in content
+        assert "VISION_PAGE_2" in content
+        assert "NATIVE_PAGE_3" in content
+        # Vision was used only for the scanned page
+        assert mock_llm.invoke.call_count == 1

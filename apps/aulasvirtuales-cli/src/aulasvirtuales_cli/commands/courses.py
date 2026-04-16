@@ -79,6 +79,10 @@ def download(
         False, "--ocr",
         help="Use a vision LLM for OCR conversion",
     ),
+    force_ocr: bool = typer.Option(
+        False, "--force-ocr",
+        help="Bypass the classifier gate and OCR even text-based PDFs (only with --ocr)",
+    ),
     ocr_provider: str = typer.Option(
         None, "--ocr-provider",
         help="OCR provider override (ollama, openrouter)",
@@ -188,7 +192,7 @@ def download(
         console.print(f"  [green]✓[/green] {path.name}")
 
         if ocr and to:
-            ocr_convert_file(path, to, dest_dir, provider, model, provider_kwargs)
+            ocr_convert_file(path, to, dest_dir, provider, model, provider_kwargs, force=force_ocr)
         elif to:
             convert_file(path, to, dest_dir)
 
@@ -204,6 +208,10 @@ def download_all(
     ocr: bool = typer.Option(
         False, "--ocr",
         help="Use a vision LLM for OCR conversion",
+    ),
+    force_ocr: bool = typer.Option(
+        False, "--force-ocr",
+        help="Bypass the classifier gate and OCR even text-based PDFs (only with --ocr)",
     ),
     ocr_provider: str = typer.Option(
         None, "--ocr-provider",
@@ -266,7 +274,15 @@ def download_all(
                     # OCR mostrará su propia barra; pausamos la de arriba para no pisar
                     progress.stop()
                     console.print(f"  [green]✓[/green] {path.name}")
-                    ocr_convert_file(path, to, dest, provider, model, provider_kwargs)
+                    try:
+                        ocr_convert_file(
+                            path, to, dest, provider, model, provider_kwargs, force=force_ocr
+                        )
+                    except typer.Exit as exc:
+                        # Gate refusal (exit code 2) in batch mode is a skip, not a stop.
+                        if getattr(exc, "exit_code", 1) != 2:
+                            progress.start()
+                            raise
                     progress.start()
                 elif to:
                     convert_file_best_effort(path, to, dest)

@@ -137,4 +137,4 @@ Clears all downloaded files from the configured download directory (`~/aulasvirt
 - `download` supports conversion (`to`), file filtering (`file`), OCR, and custom output paths.
 - Only File, Folder, and Assignment resources can be read/downloaded. Other types (Quiz, Link, etc.) cannot.
 - If authentication fails, tell the user to run `aulasvirtuales login` from the CLI to set up credentials, or set `MOODLE_USERNAME` and `MOODLE_PASSWORD` environment variables.
-- OCR requires the `ocr` extra to be installed (`uv sync --extra ocr`) and a provider/model configured via `aulasvirtuales config` or passed directly as parameters.
+- OCR (and native document conversion) require the aggregated `full` extra to be installed (`uv sync --extra full`) and a provider/model configured via `aulasvirtuales config` or passed directly as parameters.

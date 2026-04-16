@@ -14,9 +14,9 @@ mcp = FastMCP("AulasVirtuales")
 SUPPORTED_CONVERSIONS: dict[tuple[str, str], str] = {
     (".docx", "pdf"): "libreoffice",
     (".docx", "md"): "mammoth",
-    (".pdf", "md"): "pymupdf4llm",
+    (".pdf", "md"): "pdf-inspector",
     (".pptx", "pdf"): "libreoffice",
-    (".pptx", "md"): "libreoffice + pymupdf4llm",
+    (".pptx", "md"): "libreoffice + pdf-inspector",
 }
 
 
@@ -86,6 +86,7 @@ async def ocr_convert_file(
     model: str,
     provider_kwargs: dict,
     on_page: Callable[[int, int], Awaitable[None]] | None = None,
+    force: bool = False,
 ) -> Path:
     """Convert a file using OCR via a vision LLM."""
     from aulasvirtuales.ocr import OCR_SUPPORTED_EXTENSIONS, ocr_and_save
@@ -102,6 +103,7 @@ async def ocr_convert_file(
         output_format=output_format,
         output_dir=output_dir,
         on_page=on_page,
+        force=force,
     )
 
 

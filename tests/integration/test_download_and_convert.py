@@ -49,23 +49,23 @@ class TestDownloadAndConvert:
     def test_download_and_convert_pdf_to_md(self, tmp_path):
         """Download a PDF file and convert it to markdown."""
         import sys
-        mock_pymupdf = MagicMock()
-        mock_pymupdf.to_markdown.return_value = "# Lecture Notes\n\nContent here"
-        
-        with patch.dict(sys.modules, {"pymupdf4llm": mock_pymupdf}):
+        mock_inspector = MagicMock()
+        mock_inspector.process_pdf.return_value = MagicMock(markdown="# Lecture Notes\n\nContent here")
+
+        with patch.dict(sys.modules, {"pdf_inspector": mock_inspector}):
             from aulasvirtuales.converter import convert_and_save
             from aulasvirtuales.downloader import download_file
-    
+
             # Step 1: Download
             http = _mock_download_http({"lecture.pdf": b"fake pdf bytes"})
             url = "https://aulasvirtuales.frba.utn.edu.ar/pluginfile.php/1/mod_resource/content/1/lecture.pdf"
             pdf_path = download_file(http, url, tmp_path)
-    
+
             assert pdf_path.exists()
-    
+
             # Step 2: Convert
             md_path = convert_and_save(pdf_path, tmp_path)
-    
+
             assert md_path.exists()
             assert md_path.suffix == ".md"
             assert "Lecture Notes" in md_path.read_text(encoding="utf-8")

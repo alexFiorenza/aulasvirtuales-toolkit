@@ -52,7 +52,7 @@ Options:
 
 - `--to FORMAT` — Convert after download. Supported: `.docx` -> `pdf`, `.pdf` -> `md`, `.docx` -> `md` (chains docx->pdf->md), `.pptx` -> `pdf`, `.pptx` -> `md` (chains pptx->pdf->md). `.pptx` conversions require LibreOffice installed. No conversion if already in target format.
 - `-o, --output PATH` — Destination directory or file path (default: `~/aulasvirtuales` or configured dir). File extension = full file path; no extension = directory.
-- `--ocr` — Use a vision LLM to extract text via OCR instead of the default converter. Supports `.pdf`, `.docx`, `.pptx`, and images (`.png`, `.jpg`, `.jpeg`, `.gif`, `.bmp`, `.tiff`, `.webp`). Requires `uv sync --extra ocr`. When `--ocr` is used, `--to` defaults to `md`. Valid OCR output formats: `md`, `txt`. On PDFs, `--ocr` passes through a classifier gate: text-based PDFs are rejected with a suggestion to drop `--ocr`, mixed PDFs transparently use a hybrid pipeline (native text + vision OCR on scanned pages only).
+- `--ocr` — Use a vision LLM to extract text via OCR instead of the default converter. Supports `.pdf`, `.docx`, `.pptx`, and images (`.png`, `.jpg`, `.jpeg`, `.gif`, `.bmp`, `.tiff`, `.webp`). Requires `uv sync --extra full`. When `--ocr` is used, `--to` defaults to `md`. Valid OCR output formats: `md`, `txt`. On PDFs, `--ocr` passes through a classifier gate: text-based PDFs are rejected with a suggestion to drop `--ocr`, mixed PDFs transparently use a hybrid pipeline (native text + vision OCR on scanned pages only).
 - `--force-ocr` — Bypass the classifier gate and run vision OCR even on text-based PDFs. Only use when the user has explicitly asked to OCR a text-based PDF despite the warning. Ignored when `--ocr` is not set.
 - `--ocr-provider PROVIDER` — Override the configured OCR provider for this command (`ollama` or `openrouter`).
 - `--ocr-model MODEL` — Override the configured OCR model for this command.
@@ -177,8 +177,8 @@ aulasvirtuales download-all 3641 --ocr --to txt                 # OCR all files 
 - All IDs are integers from previous command outputs.
 - Downloaded files default to `~/aulasvirtuales` or the directory set via `aulasvirtuales config -d`.
 - If a `--to` conversion fails, the CLI shows which extra to install.
-- OCR requires `uv sync --extra ocr`. For `.docx` OCR, also needs `--extra docx` or LibreOffice. For `.pptx` OCR, needs LibreOffice.
-- The OCR classifier gate uses `pdf-inspector` (comes with the `markdown` extra). If the gate is ever skipped because the extra isn't installed, the CLI falls back to the plain vision pipeline and prints a note.
+- OCR (and native document conversion) require `uv sync --extra full`. For `.pptx` OCR, also needs LibreOffice installed on the system.
+- The OCR classifier gate uses `pdf-inspector` (shipped in the `full` extra). If the gate is ever skipped because the extra isn't installed, the CLI falls back to the plain vision pipeline and prints a note.
 - Symmetric warning: running `--to md` on a scanned PDF prints a warning and suggests `--ocr` instead of producing an empty file.
 - OCR provider config is stored in `~/.config/aulasvirtuales/config.json` under `ocr.<provider>` as kwargs passed directly to the LangChain class (`ChatOllama`, `ChatOpenRouter`).
 - Session tokens persist in the OS keychain. Auth is automatic.

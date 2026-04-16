@@ -27,6 +27,7 @@ async def download(
     to: str | None = None,
     file: str | None = None,
     ocr: bool = False,
+    force_ocr: bool = False,
     ocr_provider: str | None = None,
     ocr_model: str | None = None,
 ) -> str:
@@ -40,7 +41,8 @@ async def download(
         output: Destination directory or file path. Defaults to the configured download directory (~/aulasvirtuales).
         to: Convert after download. Supported conversions: .docx->pdf, .docx->md, .pdf->md, .pptx->pdf, .pptx->md. Use "md" or "txt" with OCR.
         file: Download only files whose name contains this substring (case-insensitive). Useful for folders with many files.
-        ocr: If true, use a vision LLM for OCR-based conversion instead of native parsing. Requires ocr_provider and ocr_model to be set (via params or CLI config). Defaults the output format to "md" if `to` is not specified.
+        ocr: If true, use a vision LLM for OCR-based conversion instead of native parsing. Requires ocr_provider and ocr_model to be set (via params or CLI config). Defaults the output format to "md" if `to` is not specified. On PDFs, runs the pdf-inspector classifier gate first: text-based PDFs are refused (use `to="md"` instead), mixed PDFs use a hybrid pipeline (native text + vision OCR on scanned pages only).
+        force_ocr: If true, bypass the classifier gate and run vision OCR even on text-based PDFs. Only pass true when the user has explicitly asked for OCR despite the warning. Ignored when `ocr=false`.
         ocr_provider: OCR provider override (e.g. "ollama", "openrouter"). Falls back to CLI-configured value.
         ocr_model: OCR model name override (e.g. "llava", "google/gemini-2.0-flash-001"). Falls back to CLI-configured value.
 
@@ -112,10 +114,15 @@ async def download(
         results.append(f"✓ Downloaded: {path}")
 
         if ocr and to:
-            converted = await ocr_convert_file(
-                path, to, dest_dir, provider, model, provider_kwargs, on_page
-            )
-            results.append(f"  ✓ OCR converted: {converted}")
+            from aulasvirtuales.ocr import OcrGateRefusalError
+
+            try:
+                converted = await ocr_convert_file(
+                    path, to, dest_dir, provider, model, provider_kwargs, on_page, force=force_ocr
+                )
+                results.append(f"  ✓ OCR converted: {converted}")
+            except OcrGateRefusalError as exc:
+                results.append(f"  ⚠ OCR skipped: {exc}")
         elif to:
             converted = convert_file(path, to, dest_dir)
             results.append(f"  ✓ Converted: {converted}")
