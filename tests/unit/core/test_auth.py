@@ -1,13 +1,19 @@
 """Unit tests for aulasvirtuales.auth — authentication functions."""
 
+from unittest.mock import MagicMock
+
 import pytest
 
 from aulasvirtuales.auth import (
+    AuthenticationError,
+    InvalidCredentialsError,
+    _has_keycloak_error,
     delete_credentials,
     delete_token,
     get_credentials,
     get_token,
     is_session_valid,
+    login,
     save_credentials,
     save_token,
     SERVICE_NAME,
@@ -94,3 +100,100 @@ class TestSessionValidation:
         monkeypatch.setattr(httpx, "get", lambda *args, **kwargs: mock_response)
 
         assert is_session_valid("expired_cookie") is False
+
+
+@pytest.mark.unit
+class TestKeycloakErrorDetection:
+    def test_detects_input_error(self):
+        page = MagicMock()
+        page.query_selector.side_effect = lambda sel: "el" if sel == "#input-error" else None
+
+        assert _has_keycloak_error(page) is True
+
+    def test_detects_alert_error(self):
+        page = MagicMock()
+        page.query_selector.side_effect = lambda sel: "el" if sel == ".alert-error" else None
+
+        assert _has_keycloak_error(page) is True
+
+    def test_no_error_elements(self):
+        page = MagicMock()
+        page.query_selector.return_value = None
+
+        assert _has_keycloak_error(page) is False
+
+
+@pytest.mark.unit
+class TestLoginErrorHandling:
+    """Login raises typed errors based on Playwright state."""
+
+    @pytest.fixture
+    def mock_playwright(self, monkeypatch):
+        """Mock the full sync_playwright context manager chain."""
+        from playwright.sync_api import TimeoutError as PWTimeout
+
+        page = MagicMock()
+        page.url = "https://sso.frba.utn.edu.ar/auth/realms/utn/login"
+        page.query_selector.return_value = None
+
+        context = MagicMock()
+        context.new_page.return_value = page
+        context.cookies.return_value = []
+
+        browser = MagicMock()
+        browser.new_context.return_value = context
+
+        pw = MagicMock()
+        pw.chromium.launch.return_value = browser
+
+        pw_cm = MagicMock()
+        pw_cm.__enter__.return_value = pw
+        pw_cm.__exit__.return_value = False
+
+        monkeypatch.setattr(
+            "aulasvirtuales.auth.sync_playwright", lambda: pw_cm
+        )
+        return {"page": page, "context": context, "timeout_error": PWTimeout}
+
+    def test_invalid_credentials_detected(self, mock_playwright):
+        """Keycloak error element after timeout → InvalidCredentialsError."""
+        page = mock_playwright["page"]
+        page.wait_for_url.side_effect = mock_playwright["timeout_error"]("timeout")
+        page.query_selector.side_effect = (
+            lambda sel: "err" if sel == "#input-error" else None
+        )
+
+        with pytest.raises(InvalidCredentialsError):
+            login("user", "wrong")
+
+    def test_sso_timeout_without_error_element(self, mock_playwright):
+        """Timeout with no Keycloak error → generic AuthenticationError."""
+        page = mock_playwright["page"]
+        page.wait_for_url.side_effect = mock_playwright["timeout_error"]("timeout")
+        page.query_selector.return_value = None
+
+        with pytest.raises(AuthenticationError) as exc_info:
+            login("user", "pw")
+
+        assert not isinstance(exc_info.value, InvalidCredentialsError)
+
+    def test_username_selector_timeout(self, mock_playwright):
+        """Timeout waiting for the username input → AuthenticationError (SSO down)."""
+        page = mock_playwright["page"]
+        page.wait_for_selector.side_effect = mock_playwright["timeout_error"]("timeout")
+
+        with pytest.raises(AuthenticationError) as exc_info:
+            login("user", "pw")
+
+        assert "portal SSO" in str(exc_info.value)
+
+    def test_successful_login_returns_cookie(self, mock_playwright):
+        """Happy path: MoodleSession cookie is returned."""
+        mock_playwright["context"].cookies.return_value = [
+            {"name": "MoodleSession", "value": "cookie_abc"},
+            {"name": "other", "value": "ignored"},
+        ]
+
+        token = login("user", "pw")
+
+        assert token == "cookie_abc"

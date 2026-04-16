@@ -43,6 +43,7 @@ MCP-compatible AI agents (Claude Desktop, Cursor, Copilot) that need to:
 | Credential Storage | Securely store credentials in the OS keychain (macOS Keychain, GNOME Keyring). |
 | Session Management | Cache MoodleSession cookies, auto-refresh on expiration. |
 | Status Check | Verify authentication status and session validity. |
+| Error Clarity | User-friendly messages distinguishing invalid credentials from network/SSO failures (no raw Playwright tracebacks). |
 
 ### 4.2 Course Management
 
@@ -59,6 +60,7 @@ MCP-compatible AI agents (Claude Desktop, Cursor, Copilot) that need to:
 | Download | Download individual files or entire folders. |
 | Bulk Download | Download all files from a course in one command. |
 | File Filter | Download only files matching a substring pattern. |
+| Interactive Folder Selection | In the REPL, pick which files to download from a folder via a checkbox UI. `--all` skips the selector; `--select` forces it outside the REPL. |
 | Custom Output | Specify output directory or file path. |
 
 ### 4.4 Format Conversion
@@ -66,8 +68,11 @@ MCP-compatible AI agents (Claude Desktop, Cursor, Copilot) that need to:
 | Conversion | Method | Dependency |
 |---|---|---|
 | PDF → Markdown | Native parsing | pymupdf4llm |
-| DOCX → PDF | Native conversion | docx2pdf |
+| DOCX → Markdown | Direct conversion | mammoth |
+| DOCX → PDF | Headless conversion | LibreOffice |
+| PPTX → Markdown | Headless conversion + markdown parsing | LibreOffice + pymupdf4llm |
 | PPTX → PDF | Headless conversion | LibreOffice |
+| `--to pdf` output | Unified flag covering DOCX/PPTX → PDF (and `.pdf` pass-through) | — |
 | Any → Markdown (OCR) | Vision LLM | LangChain + Ollama/OpenRouter |
 
 ### 4.5 OCR Pipeline
@@ -97,6 +102,7 @@ MCP-compatible AI agents (Claude Desktop, Cursor, Copilot) that need to:
 | REPL | Interactive shell with command autocomplete and history. |
 | Tab Completion | Two-level completer: commands → options/arguments. |
 | Banner | ASCII art banner with version info. |
+| Interactive Config UI | Textual-based screen to edit OCR provider, model, API keys, and download directory, launched automatically from the REPL (or via `config --ui` anywhere). |
 
 ## 5. Distribution Channels
 

@@ -1,4 +1,5 @@
 import asyncio
+import os
 from pathlib import Path
 
 import typer
@@ -13,7 +14,15 @@ from rich.progress import (
 )
 
 from aulasvirtuales_cli import __version__
-from aulasvirtuales.auth import get_credentials, get_token, is_session_valid, login, save_token
+from aulasvirtuales.auth import (
+    AuthenticationError,
+    InvalidCredentialsError,
+    get_credentials,
+    get_token,
+    is_session_valid,
+    login,
+    save_token,
+)
 from aulasvirtuales.client import MoodleClient
 from aulasvirtuales.config import get_ocr_config
 
@@ -32,6 +41,11 @@ class RichReporter:
 
 
 reporter = RichReporter()
+
+
+def is_repl_context() -> bool:
+    """Return True when the current command is being invoked from the interactive REPL."""
+    return os.environ.get("AULASVIRTUALES_REPL") == "1"
 
 
 def _version_callback(value: bool) -> None:
@@ -65,13 +79,28 @@ def get_client() -> MoodleClient:
 
     console.print("Session expired or missing, logging in...", style="yellow")
     username, password = creds
-    token = login(username, password)
+    try:
+        token = login(username, password)
+    except InvalidCredentialsError:
+        console.print(
+            "❌ Las credenciales guardadas fueron rechazadas. "
+            "Ejecutá [bold]aulasvirtuales login[/bold] para re-autenticar.",
+            style="red",
+        )
+        raise typer.Exit(1)
+    except AuthenticationError as e:
+        console.print(f"❌ Error de autenticación: {e}", style="red")
+        raise typer.Exit(1)
     save_token(token)
     return MoodleClient(token)
 
 
 def convert_file(path: Path, to_format: str, output_dir: Path) -> Path:
-    """Convert a downloaded file to the requested format."""
+    """Convert a downloaded file to the requested format.
+
+    Fails fast with ``typer.Exit(1)`` on any conversion problem — intended
+    for single-resource downloads where the user wants immediate feedback.
+    """
     if path.suffix.lower() == f".{to_format}":
         return path
 
@@ -89,6 +118,35 @@ def convert_file(path: Path, to_format: str, output_dir: Path) -> Path:
     except (ImportError, FileNotFoundError) as e:
         console.print(str(e), style="red")
         raise typer.Exit(1)
+
+
+def convert_file_best_effort(path: Path, to_format: str, output_dir: Path) -> Path:
+    """Convert a file, or warn and keep the original on unsupported formats.
+
+    Used by batch operations (``download_all``) where one unsupported file
+    should not abort the entire batch.
+    """
+    if path.suffix.lower() == f".{to_format}":
+        return path
+
+    from aulasvirtuales.converter import convert
+
+    try:
+        with console.status(
+            f"[cyan]  ⚙ Converting {path.name} to {to_format}...[/cyan]",
+            spinner="dots",
+        ):
+            return convert(path, to_format, output_dir, reporter=reporter)
+    except ValueError:
+        console.print(
+            f"  [yellow]⚠[/yellow] Skipping conversion: no converter for "
+            f"{path.suffix} → {to_format} (file kept as-is)",
+            style="yellow",
+        )
+        return path
+    except (ImportError, FileNotFoundError) as e:
+        console.print(f"  [yellow]⚠[/yellow] {e}", style="yellow")
+        return path
 
 
 def resolve_ocr_config(

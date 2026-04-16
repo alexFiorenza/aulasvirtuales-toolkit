@@ -1,3 +1,4 @@
+import os
 import re
 import shlex
 from importlib.resources import files
@@ -184,48 +185,52 @@ def start_repl(app) -> None:
         key_bindings=bindings,
     )
 
-    while True:
-        try:
-            def _show_completions():
-                get_app().current_buffer.start_completion()
+    os.environ["AULASVIRTUALES_REPL"] = "1"
+    try:
+        while True:
+            try:
+                def _show_completions():
+                    get_app().current_buffer.start_completion()
 
-            text = session.prompt(
-                HTML("<ansigreen>> </ansigreen>"),
-                pre_run=_show_completions,
-            ).strip()
-        except (EOFError, KeyboardInterrupt):
-            console.print("\nBye!", style="dim")
-            break
+                text = session.prompt(
+                    HTML("<ansigreen>> </ansigreen>"),
+                    pre_run=_show_completions,
+                ).strip()
+            except (EOFError, KeyboardInterrupt):
+                console.print("\nBye!", style="dim")
+                break
 
-        if not text:
-            continue
+            if not text:
+                continue
 
-        if text == "exit":
-            console.print("Bye!", style="dim")
-            break
+            if text == "exit":
+                console.print("Bye!", style="dim")
+                break
 
-        if text == "clear":
-            console.clear()
-            print(_BANNER)
-            console.print(BANNER_HELP)
-            continue
+            if text == "clear":
+                console.clear()
+                print(_BANNER)
+                console.print(BANNER_HELP)
+                continue
 
-        if text == "help":
-            _print_help(commands)
-            continue
+            if text == "help":
+                _print_help(commands)
+                continue
 
-        try:
-            args = shlex.split(text)
-        except ValueError as e:
-            console.print(f"Invalid input: {e}", style="red")
-            continue
+            try:
+                args = shlex.split(text)
+            except ValueError as e:
+                console.print(f"Invalid input: {e}", style="red")
+                continue
 
-        try:
-            click_app(args, standalone_mode=False)
-        except SystemExit:
-            pass
-        except Exception as e:
-            console.print(f"Error: {e}", style="red")
+            try:
+                click_app(args, standalone_mode=False)
+            except SystemExit:
+                pass
+            except Exception as e:
+                console.print(f"Error: {e}", style="red")
+    finally:
+        os.environ.pop("AULASVIRTUALES_REPL", None)
 
 
 def _print_help(commands: dict[str, str]) -> None:
