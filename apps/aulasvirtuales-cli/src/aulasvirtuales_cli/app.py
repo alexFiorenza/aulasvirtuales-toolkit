@@ -95,6 +95,28 @@ def get_client() -> MoodleClient:
     return MoodleClient(token)
 
 
+_SCANNED_PDF_TYPES = {"scanned", "image_based"}
+
+
+def _warn_if_scanned_pdf(path: Path) -> None:
+    """Symmetric gate: warn when running native `--to md` on a scanned PDF."""
+    if path.suffix.lower() != ".pdf":
+        return
+    try:
+        from aulasvirtuales.converter import classify_pdf
+
+        verdict = classify_pdf(path)
+    except Exception:
+        return
+    pdf_type = getattr(verdict, "pdf_type", None) if verdict else None
+    if pdf_type in _SCANNED_PDF_TYPES:
+        console.print(
+            f"  [yellow]⚠[/yellow] '{path.name}' looks like a scanned PDF "
+            "— native --to md will likely produce an empty file. Use --ocr instead.",
+            style="yellow",
+        )
+
+
 def convert_file(path: Path, to_format: str, output_dir: Path) -> Path:
     """Convert a downloaded file to the requested format.
 
@@ -103,6 +125,9 @@ def convert_file(path: Path, to_format: str, output_dir: Path) -> Path:
     """
     if path.suffix.lower() == f".{to_format}":
         return path
+
+    if to_format == "md":
+        _warn_if_scanned_pdf(path)
 
     from aulasvirtuales.converter import convert
 
@@ -128,6 +153,9 @@ def convert_file_best_effort(path: Path, to_format: str, output_dir: Path) -> Pa
     """
     if path.suffix.lower() == f".{to_format}":
         return path
+
+    if to_format == "md":
+        _warn_if_scanned_pdf(path)
 
     from aulasvirtuales.converter import convert
 
@@ -175,13 +203,18 @@ def ocr_convert_file(
     provider: str,
     model: str,
     provider_kwargs: dict,
+    force: bool = False,
 ) -> Path:
     """Convert a file using OCR via a vision LLM."""
     try:
-        from aulasvirtuales.ocr import OCR_SUPPORTED_EXTENSIONS, ocr_and_save
+        from aulasvirtuales.ocr import (
+            OCR_SUPPORTED_EXTENSIONS,
+            OcrGateRefusalError,
+            ocr_and_save,
+        )
     except ImportError:
         console.print(
-            "OCR dependencies not installed. Run: uv sync --extra ocr",
+            "OCR dependencies not installed. Run: uv sync --extra full",
             style="red",
         )
         raise typer.Exit(1)
@@ -210,16 +243,21 @@ def ocr_convert_file(
         async def on_status(message: str) -> None:
             progress.update(task_id, description=message)
 
-        result = asyncio.run(
-            ocr_and_save(
-                path, provider, model,
-                provider_config=provider_kwargs,
-                output_format=output_format,
-                output_dir=output_dir,
-                on_page=on_page,
-                on_status=on_status,
+        try:
+            result = asyncio.run(
+                ocr_and_save(
+                    path, provider, model,
+                    provider_config=provider_kwargs,
+                    output_format=output_format,
+                    output_dir=output_dir,
+                    on_page=on_page,
+                    on_status=on_status,
+                    force=force,
+                )
             )
-        )
+        except OcrGateRefusalError as exc:
+            console.print(f"  [yellow]⚠[/yellow] {exc}", style="yellow")
+            raise typer.Exit(2)
 
     ext_label = "markdown" if output_format == "md" else "text"
     console.print(f"  [green]✓[/green] {result.name} ({ext_label}, ocr)")

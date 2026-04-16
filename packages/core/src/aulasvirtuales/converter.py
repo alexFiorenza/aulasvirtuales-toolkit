@@ -50,9 +50,10 @@ class PdfToMarkdown:
         output_dir: Path | None = None,
         reporter: ProgressReporter | None = None,
     ) -> Path:
-        import pymupdf4llm
+        import pdf_inspector
 
-        md_content = pymupdf4llm.to_markdown(str(input_path))
+        result = pdf_inspector.process_pdf(str(input_path))
+        md_content = result.markdown or ""
         out_dir = output_dir or input_path.parent
         out_dir.mkdir(parents=True, exist_ok=True)
         md_path = out_dir / f"{input_path.stem}.md"
@@ -60,6 +61,15 @@ class PdfToMarkdown:
         if reporter:
             reporter.on_step("markdown", md_path)
         return md_path
+
+
+def classify_pdf(pdf_path: Path):
+    """Classify a PDF via pdf-inspector. Returns the PdfResult, or None if the extra isn't installed."""
+    try:
+        import pdf_inspector
+    except ImportError:
+        return None
+    return pdf_inspector.detect_pdf(str(pdf_path))
 
 
 class DocxToPdf:
@@ -146,9 +156,9 @@ def convert(
 # ---------------------------------------------------------------------------
 
 def pdf_to_markdown(pdf_path: Path) -> str:
-    import pymupdf4llm
+    import pdf_inspector
 
-    return pymupdf4llm.to_markdown(str(pdf_path))
+    return pdf_inspector.process_pdf(str(pdf_path)).markdown or ""
 
 
 def convert_and_save(pdf_path: Path, output_dir: Path | None = None) -> Path:

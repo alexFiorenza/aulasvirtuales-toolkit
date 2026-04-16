@@ -15,13 +15,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-markdown = [
-    "pymupdf4llm>=0.0.10",
-]
-docx = [
+full = [
+    "pdf-inspector>=0.1.1",
     "mammoth>=1.8",
-]
-ocr = [
     "langchain-core>=0.3",
     "langchain-ollama>=0.3",
     "langchain-openrouter>=0.1",

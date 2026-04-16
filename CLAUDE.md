@@ -59,8 +59,8 @@ cz bump        # bump version using commitizen
 - Test markers: `@pytest.mark.unit`, `@pytest.mark.integration`
 - Integration tests mock external services (Moodle, keyring) — they don't hit real endpoints
 - Shared test fixtures in `tests/conftest.py` (Moodle HTML/JSON samples, mock keyring, mock HTTP client)
-- Optional extras are separate: `ocr`, `markdown` (PDF→MD via `pdf-inspector`), `docx` (DOCX→MD via `mammoth`). Install via `uv sync --all-extras` for full dev.
-- `pdf-inspector` publishes wheels for CPython 3.12 only. Python 3.11 / 3.13 will fall back to building from sdist and need a Rust toolchain; the `markdown` extra is optional precisely for that reason.
+- Optional dependencies live behind a single aggregated `full` extra: `pdf-inspector` (PDF→MD + classifier), `mammoth` (DOCX→MD), and the LangChain + PyMuPDF stack for OCR. Install via `uv sync --extra full` (or `--all-extras`).
+- `pdf-inspector` publishes wheels for CPython 3.12 only. Python 3.11 / 3.13 will fall back to building from sdist and need a Rust toolchain; the `full` extra is optional precisely for that reason.
 
 ## Architecture Notes
 

@@ -267,13 +267,18 @@ skills/
 
 ### Optional extras
 
+A single aggregated `full` extra bundles every optional feature (document conversion + OCR):
+
 | Extra | Dependencies | Purpose |
 |---|---|---|
-| `markdown` | pdf-inspector | Native PDF → markdown conversion + PDF classification (OCR gate) |
-| `docx` | mammoth | DOCX → markdown conversion (pure Python, no system deps) |
-| `ocr` | langchain-core, langchain-ollama, langchain-openrouter, pymupdf | OCR via vision LLMs |
+| `full` | pdf-inspector, mammoth, langchain-core, langchain-ollama, langchain-openrouter, pymupdf | Native PDF→MD + classifier gate, DOCX→MD, and vision-LLM OCR |
 
-> `pdf-inspector` only publishes wheels for Python 3.12 at the moment. On 3.11 or 3.13 `pip` will try to build from source and will need a Rust toolchain. If you don't plan to convert PDFs, you can skip the `markdown` extra.
+```bash
+uv sync --extra full          # dev
+pip install "aulasvirtuales-core[full]"   # runtime
+```
+
+> `pdf-inspector` only publishes wheels for Python 3.12 at the moment. On 3.11 or 3.13 `pip` will try to build from source and will need a Rust toolchain. If you don't need document conversion or OCR, omit the `full` extra.
 
 ### Optional: LibreOffice (for .pptx conversion)
 
