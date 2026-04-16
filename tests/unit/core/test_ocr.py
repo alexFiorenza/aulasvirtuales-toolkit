@@ -113,3 +113,84 @@ class TestOcrAndSave:
 
         assert len(pages_tracked) == 1
         assert pages_tracked[0] == (1, 1)
+
+    @patch("aulasvirtuales.ocr._get_llm")
+    @patch("aulasvirtuales.ocr._pdf_to_images")
+    async def test_ocr_and_save_reports_status(self, mock_pdf_to_images, mock_get_llm, tmp_path):
+        """on_status callback receives step descriptions during OCR."""
+        from aulasvirtuales.ocr import ocr_and_save
+
+        mock_llm = MagicMock()
+        mock_llm.invoke.side_effect = [
+            MagicMock(content="Page 1"),
+            MagicMock(content="Page 2"),
+        ]
+        mock_get_llm.return_value = mock_llm
+        mock_pdf_to_images.return_value = [b"img1", b"img2"]
+
+        pdf_path = tmp_path / "doc.pdf"
+        pdf_path.write_bytes(b"fake pdf")
+
+        statuses: list[str] = []
+
+        async def on_status(message: str) -> None:
+            statuses.append(message)
+
+        await ocr_and_save(
+            pdf_path, "ollama", "llava", output_dir=tmp_path, on_status=on_status
+        )
+
+        assert any("Rendering" in s for s in statuses)
+        assert any("page 1/2" in s for s in statuses)
+        assert any("page 2/2" in s for s in statuses)
+
+    @patch("aulasvirtuales.ocr._get_llm")
+    @patch("aulasvirtuales.ocr._pdf_to_images")
+    async def test_ocr_and_save_reports_status_convert_step(
+        self, mock_pdf_to_images, mock_get_llm, tmp_path
+    ):
+        """on_status reports conversion step for non-PDF files."""
+        from aulasvirtuales.ocr import ocr_and_save
+
+        mock_llm = MagicMock()
+        mock_llm.invoke.return_value = MagicMock(content="Content")
+        mock_get_llm.return_value = mock_llm
+        mock_pdf_to_images.return_value = [b"img1"]
+
+        docx_path = tmp_path / "report.docx"
+        docx_path.write_bytes(b"fake docx")
+
+        statuses: list[str] = []
+
+        async def on_status(message: str) -> None:
+            statuses.append(message)
+
+        with patch("aulasvirtuales.ocr._ensure_pdf", return_value=(tmp_path / "report.pdf", False)):
+            (tmp_path / "report.pdf").write_bytes(b"fake pdf")
+            await ocr_and_save(
+                docx_path, "ollama", "llava", output_dir=tmp_path, on_status=on_status
+            )
+
+        assert any("Converting" in s for s in statuses)
+
+    @patch("aulasvirtuales.ocr._get_llm")
+    @patch("aulasvirtuales.ocr._pdf_to_images")
+    async def test_ocr_and_save_page_error_includes_page_number(
+        self, mock_pdf_to_images, mock_get_llm, tmp_path
+    ):
+        """RuntimeError includes page number when OCR fails on a specific page."""
+        from aulasvirtuales.ocr import ocr_and_save
+
+        mock_llm = MagicMock()
+        mock_llm.invoke.side_effect = [
+            MagicMock(content="Page 1 OK"),
+            Exception("connection timeout"),
+        ]
+        mock_get_llm.return_value = mock_llm
+        mock_pdf_to_images.return_value = [b"img1", b"img2", b"img3"]
+
+        pdf_path = tmp_path / "doc.pdf"
+        pdf_path.write_bytes(b"fake pdf")
+
+        with pytest.raises(RuntimeError, match="page 2/3"):
+            await ocr_and_save(pdf_path, "ollama", "llava", output_dir=tmp_path)

@@ -19,7 +19,7 @@ markdown = [
     "pymupdf4llm>=0.0.10",
 ]
 docx = [
-    "docx2pdf>=0.1.8",
+    "mammoth>=1.8",
 ]
 ocr = [
     "langchain-core>=0.3",

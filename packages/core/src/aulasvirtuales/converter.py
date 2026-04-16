@@ -13,6 +13,36 @@ class ConversionStrategy(Protocol):
     ) -> Path: ...
 
 
+def _libreoffice_to_pdf(
+    input_path: Path,
+    output_dir: Path | None = None,
+    reporter: ProgressReporter | None = None,
+) -> Path:
+    """Convert a document to PDF using LibreOffice in headless mode."""
+    import shutil
+    import subprocess
+
+    cmd = shutil.which("libreoffice") or shutil.which("soffice")
+    if not cmd:
+        ext = input_path.suffix
+        raise FileNotFoundError(
+            f"LibreOffice is required for {ext} to PDF conversion. "
+            "Install it with: brew install --cask libreoffice (macOS) "
+            "or apt install libreoffice (Linux)"
+        )
+    out_dir = output_dir or input_path.parent
+    out_dir.mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        [cmd, "--headless", "--convert-to", "pdf", "--outdir", str(out_dir), str(input_path)],
+        check=True,
+        capture_output=True,
+    )
+    pdf_path = out_dir / f"{input_path.stem}.pdf"
+    if reporter:
+        reporter.on_step("pdf", pdf_path)
+    return pdf_path
+
+
 class PdfToMarkdown:
     def convert(
         self,
@@ -39,15 +69,30 @@ class DocxToPdf:
         output_dir: Path | None = None,
         reporter: ProgressReporter | None = None,
     ) -> Path:
-        from docx2pdf import convert as docx_convert
+        return _libreoffice_to_pdf(input_path, output_dir, reporter)
+
+
+class DocxToMarkdown:
+    """DOCX -> Markdown via mammoth (pure-Python, no system dependencies)."""
+
+    def convert(
+        self,
+        input_path: Path,
+        output_dir: Path | None = None,
+        reporter: ProgressReporter | None = None,
+    ) -> Path:
+        import mammoth
+
+        with open(input_path, "rb") as f:
+            result = mammoth.convert_to_markdown(f)
 
         out_dir = output_dir or input_path.parent
         out_dir.mkdir(parents=True, exist_ok=True)
-        pdf_path = out_dir / f"{input_path.stem}.pdf"
-        docx_convert(str(input_path), str(pdf_path))
+        md_path = out_dir / f"{input_path.stem}.md"
+        md_path.write_text(result.value, encoding="utf-8")
         if reporter:
-            reporter.on_step("pdf", pdf_path)
-        return pdf_path
+            reporter.on_step("markdown", md_path)
+        return md_path
 
 
 class PptxToPdf:
@@ -57,40 +102,7 @@ class PptxToPdf:
         output_dir: Path | None = None,
         reporter: ProgressReporter | None = None,
     ) -> Path:
-        import shutil
-        import subprocess
-
-        cmd = shutil.which("libreoffice") or shutil.which("soffice")
-        if not cmd:
-            raise FileNotFoundError(
-                "LibreOffice is required for .pptx to PDF conversion. "
-                "Install it with: brew install --cask libreoffice (macOS) "
-                "or apt install libreoffice (Linux)"
-            )
-        out_dir = output_dir or input_path.parent
-        out_dir.mkdir(parents=True, exist_ok=True)
-        subprocess.run(
-            [cmd, "--headless", "--convert-to", "pdf", "--outdir", str(out_dir), str(input_path)],
-            check=True,
-            capture_output=True,
-        )
-        pdf_path = out_dir / f"{input_path.stem}.pdf"
-        if reporter:
-            reporter.on_step("pdf", pdf_path)
-        return pdf_path
-
-
-class DocxToMarkdown:
-    """DOCX -> PDF -> Markdown (chained)."""
-
-    def convert(
-        self,
-        input_path: Path,
-        output_dir: Path | None = None,
-        reporter: ProgressReporter | None = None,
-    ) -> Path:
-        pdf_path = DocxToPdf().convert(input_path, output_dir, reporter)
-        return PdfToMarkdown().convert(pdf_path, output_dir, reporter)
+        return _libreoffice_to_pdf(input_path, output_dir, reporter)
 
 
 class PptxToMarkdown:

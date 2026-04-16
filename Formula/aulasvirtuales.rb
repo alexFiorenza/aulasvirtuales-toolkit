@@ -17,7 +17,7 @@ class Aulasvirtuales < Formula
   end
 
   def post_install
-    system libexec/"bin/pip", "install", "#{libexec}/src/packages/core[ocr,docx]"
+    system libexec/"bin/pip", "install", "#{libexec}/src/packages/core[ocr,docx,markdown]"
     system libexec/"bin/pip", "install", "#{libexec}/src/apps/aulasvirtuales-cli"
     rm_rf libexec/"src"
 

@@ -12,8 +12,8 @@ mcp = FastMCP("AulasVirtuales")
 
 
 SUPPORTED_CONVERSIONS: dict[tuple[str, str], str] = {
-    (".docx", "pdf"): "docx2pdf",
-    (".docx", "md"): "docx2pdf + pymupdf4llm",
+    (".docx", "pdf"): "libreoffice",
+    (".docx", "md"): "mammoth",
     (".pdf", "md"): "pymupdf4llm",
     (".pptx", "pdf"): "libreoffice",
     (".pptx", "md"): "libreoffice + pymupdf4llm",
@@ -56,27 +56,8 @@ def convert_file(path: Path, to_format: str, output_dir: Path) -> Path:
     if key not in SUPPORTED_CONVERSIONS:
         raise ValueError(f"Conversion from {suffix} to {to_format} is not supported.")
 
-    if suffix == ".pptx" and to_format in ("pdf", "md"):
-        from aulasvirtuales.converter import pptx_to_pdf
-        pdf_path = pptx_to_pdf(path, output_dir)
-        if to_format == "pdf":
-            return pdf_path
-        path = pdf_path
-        suffix = ".pdf"
-
-    if suffix == ".docx" and to_format in ("pdf", "md"):
-        from aulasvirtuales.converter import docx_to_pdf
-        pdf_path = docx_to_pdf(path, output_dir)
-        if to_format == "pdf":
-            return pdf_path
-        path = pdf_path
-        suffix = ".pdf"
-
-    if suffix == ".pdf" and to_format == "md":
-        from aulasvirtuales.converter import convert_and_save
-        return convert_and_save(path, output_dir)
-
-    return path
+    from aulasvirtuales.converter import convert
+    return convert(path, to_format, output_dir)
 
 
 def resolve_ocr_config(

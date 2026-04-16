@@ -78,7 +78,11 @@ def convert_file(path: Path, to_format: str, output_dir: Path) -> Path:
     from aulasvirtuales.converter import convert
 
     try:
-        return convert(path, to_format, output_dir, reporter=reporter)
+        with console.status(
+            f"[cyan]  ⚙ Converting {path.name} to {to_format}...[/cyan]",
+            spinner="dots",
+        ):
+            return convert(path, to_format, output_dir, reporter=reporter)
     except ValueError as e:
         console.print(str(e), style="red")
         raise typer.Exit(1)
@@ -145,6 +149,9 @@ def ocr_convert_file(
         async def on_page(current: int, total: int) -> None:
             progress.update(task_id, completed=current, total=total)
 
+        async def on_status(message: str) -> None:
+            progress.update(task_id, description=message)
+
         result = asyncio.run(
             ocr_and_save(
                 path, provider, model,
@@ -152,6 +159,7 @@ def ocr_convert_file(
                 output_format=output_format,
                 output_dir=output_dir,
                 on_page=on_page,
+                on_status=on_status,
             )
         )
 
