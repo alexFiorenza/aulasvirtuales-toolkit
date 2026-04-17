@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.0](https://github.com/alexFiorenza/aulasvirtuales-toolkit/compare/aulasvirtuales-cli-v0.6.2...aulasvirtuales-cli-v0.7.0) (2026-04-17)
+
+
+### Features
+
+* **cli:** add interactive textual tui and friendlier login errors ([145bb06](https://github.com/alexFiorenza/aulasvirtuales-toolkit/commit/145bb0698d561ae2969e9301a1f5845ec32c25bc))
+* **core:** swap pdf parser to pdf-inspector and add ocr classifier gate ([beadb87](https://github.com/alexFiorenza/aulasvirtuales-toolkit/commit/beadb87eb058815079978fe0c60bdbce04f738f6))
+
 ## [0.6.2](https://github.com/alexFiorenza/aulasvirtuales-toolkit/compare/aulasvirtuales-cli-v0.6.1...aulasvirtuales-cli-v0.6.2) (2026-04-16)
 
 
