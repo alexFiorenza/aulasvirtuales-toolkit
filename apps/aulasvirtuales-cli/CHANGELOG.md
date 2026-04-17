@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/alexFiorenza/aulasvirtuales-toolkit/compare/aulasvirtuales-cli-v0.7.0...aulasvirtuales-cli-v0.8.0) (2026-04-17)
+
+
+### Features
+
+* **core:** add read_resource for non-downloadable moodle modules (url, page, label) ([a87cf64](https://github.com/alexFiorenza/aulasvirtuales-toolkit/commit/a87cf6416f01bbc46685ea57a51f8ff71fda2622))
+
 ## [0.7.0](https://github.com/alexFiorenza/aulasvirtuales-toolkit/compare/aulasvirtuales-cli-v0.6.2...aulasvirtuales-cli-v0.7.0) (2026-04-17)
 
 
