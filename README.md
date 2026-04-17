@@ -75,6 +75,7 @@ Then configure it in your MCP client (e.g. Claude Desktop, Cursor) as a stdio se
 | `get_forum_discussions` | List discussion threads in a forum |
 | `get_discussion_posts` | Show messages in a discussion thread |
 | `download` | Download a resource with optional format conversion and OCR |
+| `read_resource` | Read the content of a non-downloadable resource (Link, Page, or Label) |
 | `read_downloaded_file` | Read a file from the local downloads directory |
 | `clear_downloads` | Clear all downloaded files from the downloads directory |
 
@@ -137,6 +138,16 @@ aulasvirtuales courses
 ```bash
 aulasvirtuales resources <course_id>
 ```
+
+### Read a non-downloadable resource
+
+For resources of type Link, Page, or Text (label):
+
+```bash
+aulasvirtuales read <course_id> <resource_id>
+```
+
+Returns the external URL for links (Meet, Zoom, YouTube, etc.), page text, or label text.
 
 ### Download a resource
 

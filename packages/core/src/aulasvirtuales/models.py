@@ -51,10 +51,18 @@ class Resource:
     name: str
     module: str
     url: str | None = None
+    description: str | None = None
 
     @property
     def type_label(self) -> str:
         return MODULE_TYPE_LABELS.get(self.module, self.module)
+
+
+@dataclass
+class ResourceContent:
+    resource_id: int
+    module: str
+    content: str
 
 
 @dataclass

@@ -9,9 +9,12 @@ from aulasvirtuales.models import (  # noqa: F401 — backward compat re-exports
     ForumPost,
     GradeItem,
     Resource,
+    ResourceContent,
     Section,
     SubmissionComment,
 )
+from aulasvirtuales import reader as _reader
+from aulasvirtuales.reader import READABLE_MODULES  # noqa: F401
 from aulasvirtuales.services.assignments import AssignmentsService
 from aulasvirtuales.services.courses import CoursesService
 from aulasvirtuales.services.events import EventsService
@@ -69,3 +72,11 @@ class MoodleClient:
 
     def get_assignment_details(self, assignment_cmid: int) -> AssignmentDetails:
         return self._assignments.get_assignment_details(assignment_cmid)
+
+    def read_resource(self, course_id: int, resource_id: int) -> ResourceContent:
+        sections = self.get_course_contents(course_id)
+        for section in sections:
+            for r in section.resources:
+                if r.id == resource_id:
+                    return _reader.read_resource(self._http, r)
+        raise ValueError(f"Resource {resource_id} not found in course {course_id}.")

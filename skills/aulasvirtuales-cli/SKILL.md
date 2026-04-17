@@ -34,7 +34,20 @@ Lists enrolled courses. Output: ID, Name.
 
 Lists sections and resources in a course. Output: ID, Type, Name.
 
-Resource types: File, Folder, Forum, Assignment, Quiz, Link, Text, Page. Only File and Folder are downloadable.
+Resource types: File, Folder, Forum, Assignment, Quiz, Link, Text, Page. File and Folder are downloadable; Link, Page, and Text are readable via `read`.
+
+### `aulasvirtuales read <course_id> <resource_id>`
+
+Reads the content of a non-downloadable resource. Supported types:
+
+- **Link** — prints the actual external URL (e.g. a Meet, Zoom, or YouTube link)
+- **Page** — prints the page text content
+- **Text (label)** — prints the inline label text
+
+```bash
+aulasvirtuales resources 3641          # find a Link/Page/Text resource ID
+aulasvirtuales read 3641 106232        # print its content
+```
 
 ### `aulasvirtuales download <course_id> <resource_id> [OPTIONS]`
 
@@ -153,6 +166,13 @@ aulasvirtuales download 3641 106231 --to pdf -o ~/notes
 
 ```bash
 aulasvirtuales events
+```
+
+### Read a link, page, or label
+
+```bash
+aulasvirtuales resources 3641                   # find a Link/Page/Text resource ID
+aulasvirtuales read 3641 106232                 # print the content
 ```
 
 ### Read announcements

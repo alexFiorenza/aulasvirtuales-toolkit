@@ -38,6 +38,9 @@ SAMPLE_COURSE_STATE = {
         {"id": 2, "name": "Foro General", "module": "forum", "sectionid": "10", "uservisible": True, "url": "/mod/forum/view.php?id=2"},
         {"id": 3, "name": "Recurso Oculto", "module": "resource", "sectionid": "10", "uservisible": False, "url": None},
         {"id": 4, "name": "Carpeta PDFs", "module": "folder", "sectionid": "20", "uservisible": True, "url": "/mod/folder/view.php?id=4"},
+        {"id": 5, "name": "Aviso importante", "module": "label", "sectionid": "10", "uservisible": True, "url": None, "description": "<p>Leer antes del parcial.</p>"},
+        {"id": 6, "name": "Reglamento", "module": "page", "sectionid": "10", "uservisible": True, "url": "/mod/page/view.php?id=6", "description": None},
+        {"id": 7, "name": "Campus Virtual", "module": "url", "sectionid": "10", "uservisible": True, "url": "/mod/url/view.php?id=7", "description": None},
     ],
     "section": [
         {"id": "10", "number": 1, "title": "Unidad 1", "visible": True},
@@ -45,6 +48,29 @@ SAMPLE_COURSE_STATE = {
         {"id": "30", "number": 3, "title": "Unidad Oculta", "visible": False},
     ],
 }
+
+SAMPLE_URL_VIEW_HTML = """
+<html><body>
+<div class="urlworkaround">
+  <a href="https://meet.google.com/abc-def-ghi">Continuar al enlace</a>
+</div>
+</body></html>
+"""
+
+SAMPLE_URL_META_REFRESH_HTML = """
+<html><head>
+<meta http-equiv="refresh" content="3; url=https://zoom.us/j/123456789">
+</head><body></body></html>
+"""
+
+SAMPLE_PAGE_VIEW_HTML = """
+<html><body>
+<div class="box py-3 generalbox">
+  <p>Este es el contenido de la página.</p>
+  <p>Con varios párrafos.</p>
+</div>
+</body></html>
+"""
 
 SAMPLE_FORUM_DISCUSSIONS_HTML = """
 <html><body>
