@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/alexFiorenza/aulasvirtuales-toolkit/compare/aulasvirtuales-mcp-v0.6.0...aulasvirtuales-mcp-v0.7.0) (2026-04-17)
+
+
+### Features
+
+* **core:** add read_resource for non-downloadable moodle modules (url, page, label) ([a87cf64](https://github.com/alexFiorenza/aulasvirtuales-toolkit/commit/a87cf6416f01bbc46685ea57a51f8ff71fda2622))
+
 ## [0.6.0](https://github.com/alexFiorenza/aulasvirtuales-toolkit/compare/aulasvirtuales-mcp-v0.5.2...aulasvirtuales-mcp-v0.6.0) (2026-04-17)
 
 
