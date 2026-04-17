@@ -73,7 +73,7 @@ wheels = [
 
 [[package]]
 name = "aulasvirtuales-cli"
-version = "0.6.1"
+version = "0.6.2"
 source = { editable = "apps/aulasvirtuales-cli" }
 dependencies = [
     { name = "aulasvirtuales-core" },
@@ -128,7 +128,7 @@ provides-extras = ["full"]
 
 [[package]]
 name = "aulasvirtuales-mcp"
-version = "0.5.1"
+version = "0.5.2"
 source = { editable = "apps/aulasvirtuales-mcp" }
 dependencies = [
     { name = "aulasvirtuales-core" },

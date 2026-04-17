@@ -162,10 +162,12 @@ class TestGetCourseContents:
         assert len(sections) == 2
         assert sections[0].name == "Unidad 1"
 
-        # "Recurso Oculto" (uservisible=False) is excluded
+        # "Recurso Oculto" (uservisible=False) is excluded; label/page/url entries are included
         visible_resources = sections[0].resources
-        assert len(visible_resources) == 2
         assert all(r.name != "Recurso Oculto" for r in visible_resources)
+        resource_names = {r.name for r in visible_resources}
+        assert "Apunte Tema 1" in resource_names
+        assert "Foro General" in resource_names
 
     def test_get_course_contents_returns_sections_with_resources(self, monkeypatch):
         """Sections contain their associated resources."""

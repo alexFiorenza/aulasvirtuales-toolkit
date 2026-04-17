@@ -198,6 +198,21 @@ def download(
 
 
 @app.command()
+def read(
+    course_id: int = typer.Argument(help="Course ID"),
+    resource_id: int = typer.Argument(help="Resource ID (url, page, or label)"),
+) -> None:
+    """Read the content of a non-downloadable resource (link, page, or label)."""
+    with console.status("[cyan]Fetching resource...[/cyan]", spinner="dots"):
+        client = get_client()
+        result = client.read_resource(course_id, resource_id)
+
+    labels = {"url": "External URL", "page": "Page Content", "label": "Label Text"}
+    console.print(f"\n[bold cyan]{labels.get(result.module, result.module)}[/bold cyan]")
+    console.print(result.content)
+
+
+@app.command()
 def download_all(
     course_id: int = typer.Argument(help="Course ID"),
     output: Path = typer.Option(None, "--output", "-o", help="Download directory"),

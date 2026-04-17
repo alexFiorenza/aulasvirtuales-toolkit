@@ -53,6 +53,16 @@ Shows all messages in a forum discussion thread, including author, date, subject
 
 Reads a file from the local downloads directory (`~/aulasvirtuales` by default). If no filename is given, lists all available files. Text files are returned as text, PDFs as extracted text, and images as image content. Use this after `download` to read a converted file and pass its content to other tools or MCP servers (e.g. saving to Obsidian).
 
+### `read_resource(course_id, resource_id)`
+
+Reads the content of a non-downloadable resource. Supported types:
+
+- **Link (`url`)** — returns the actual external URL (e.g. a Meet, Zoom, or YouTube link)
+- **Page (`page`)** — returns the page text content
+- **Label (`label`)** — returns the inline label text
+
+Use `get_course_resources` first to find the resource ID and confirm the type.
+
 ### `download(course_id, resource_id, output?, to?, file?, ocr?, force_ocr?, ocr_provider?, ocr_model?)`
 
 Full-featured download tool, equivalent to the CLI's `aulasvirtuales download` command. Supports format conversion and OCR.
@@ -115,6 +125,11 @@ Clears all downloaded files from the configured download directory (`~/aulasvirt
 7. Deliver the content or pass it to another MCP (e.g. Obsidian)
 8. **Ask the user** if they want to clean up downloads, and if yes call `clear_downloads(force=true)`
 
+### Get a link, page content, or label text
+
+1. Call `get_course_resources(course_id)` to find the resource ID and confirm its type is Link, Page, or Text
+2. Call `read_resource(course_id, resource_id)` to get the content
+
 ### Check deadlines
 
 1. Call `get_upcoming_events()` for all courses, or `get_upcoming_events(course_id)` for a specific one
@@ -135,6 +150,6 @@ Clears all downloaded files from the configured download directory (`~/aulasvirt
 - All IDs are integers returned by previous tool calls.
 - Use `download` to save files to disk (with optional conversion/OCR). Use `read_downloaded_file` to read those files and get their content.
 - `download` supports conversion (`to`), file filtering (`file`), OCR, and custom output paths.
-- Only File, Folder, and Assignment resources can be read/downloaded. Other types (Quiz, Link, etc.) cannot.
+- Use `download` for File and Folder resources (downloadable). Use `read_resource` for Link, Page, and Label resources (non-downloadable). Other types (Forum, Assignment, Quiz) have dedicated tools.
 - If authentication fails, tell the user to run `aulasvirtuales login` from the CLI to set up credentials, or set `MOODLE_USERNAME` and `MOODLE_PASSWORD` environment variables.
 - OCR (and native document conversion) require the aggregated `full` extra to be installed (`uv sync --extra full`) and a provider/model configured via `aulasvirtuales config` or passed directly as parameters.

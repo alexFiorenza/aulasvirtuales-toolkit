@@ -42,6 +42,7 @@ classDiagram
         +get_grades(course_id: int) list~GradeItem~
         +get_grades_with_status(course_id: int) list~GradeItem~
         +get_assignment_details(assignment_cmid: int) AssignmentDetails
+        +read_resource(course_id: int, resource_id: int) ResourceContent
     }
 
     MoodleClient *-- MoodleSession
@@ -105,6 +106,8 @@ classDiagram
         +parse_grade_table(html: str) list~tuple~
         +parse_forum_discussions(html: str, limit: int) list~Discussion~
         +parse_assignment_page(html: str) tuple
+        +parse_url_redirect(html: str) str|None
+        +parse_page_content(html: str) str
     }
 
     ForumsService ..> ParsersModule : uses
@@ -126,7 +129,14 @@ classDiagram
         +name: str
         +module: str
         +url: str | None
+        +description: str | None
         +type_label: str
+    }
+
+    class ResourceContent {
+        +resource_id: int
+        +module: str
+        +content: str
     }
 
     class Section {
@@ -320,6 +330,15 @@ classDiagram
         +filename_from_url(url: str) str
     }
 
+    class ReaderModule {
+        <<module: reader>>
+        +READABLE_MODULES: set~str~
+        +read_resource(http: httpx.Client, resource: Resource) ResourceContent
+    }
+
+    ReaderModule ..> ParsersModule : uses
+    ReaderModule --> ResourceContent : returns
+
     %% ─────────────────────────────────────────────
     %% ocr.py (unchanged)
     %% ─────────────────────────────────────────────
@@ -473,6 +492,7 @@ classDiagram
         +status() void
         +courses() void
         +resources(course_id) void
+        +read(course_id, resource_id) void
         +download(course_id, resource_id, ...) void
         +download_all(course_id, ...) void
         +events(course_id) void
@@ -489,6 +509,7 @@ classDiagram
         +get_courses() tool
         +get_course_resources(course_id) tool
         +download(course_id, resource_id, ...) tool
+        +read_resource(course_id, resource_id) tool
         +ocr_status(job_id) tool
         +get_upcoming_events(course_id) tool
         +get_grades(course_id) tool

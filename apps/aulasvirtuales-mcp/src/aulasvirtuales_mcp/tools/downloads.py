@@ -5,6 +5,7 @@ from fastmcp.utilities.types import Image
 
 from aulasvirtuales.config import get_download_dir
 from aulasvirtuales.downloader import download_file, filename_from_url, get_resource_files
+from aulasvirtuales.reader import READABLE_MODULES, read_resource as _read_resource
 from aulasvirtuales_mcp.server import get_client, mcp, convert_file, ocr_convert_file, resolve_ocr_config
 
 
@@ -128,6 +129,36 @@ async def download(
             results.append(f"  ✓ Converted: {converted}")
 
     return "\n".join(results)
+
+
+@mcp.tool()
+def read_resource(course_id: int | str, resource_id: int | str) -> str:
+    """Read the content of a non-downloadable Moodle resource.
+
+    Supported module types:
+    - url: returns the actual external URL (e.g. a Meet, Zoom, or YouTube link)
+    - page: returns the page text content
+    - label: returns the inline label text
+
+    Args:
+        course_id: The Moodle course ID.
+        resource_id: The resource ID. Must be a url, page, or label type.
+
+    Returns:
+        The resource content as plain text.
+    """
+    course_id, resource_id = int(course_id), int(resource_id)
+    client = get_client()
+    resource, _ = _find_resource(client, course_id, resource_id)
+    if not resource:
+        raise ValueError(f"Resource {resource_id} not found in course {course_id}.")
+    if resource.module not in READABLE_MODULES:
+        raise ValueError(
+            f"Resource type '{resource.module}' is not readable. "
+            f"Readable types: url, page, label."
+        )
+    result = _read_resource(client._http, resource)
+    return result.content
 
 
 @mcp.tool()

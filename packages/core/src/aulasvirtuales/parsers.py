@@ -92,6 +92,44 @@ def parse_forum_discussions(html: str, limit: int = 10) -> list[Discussion]:
     return discussions
 
 
+def parse_url_redirect(html: str) -> str | None:
+    """Extract the external redirect URL from a Moodle url-module view page."""
+    block = re.search(
+        r'class="urlworkaround"[^>]*>(.*?)</div>',
+        html,
+        re.DOTALL | re.IGNORECASE,
+    )
+    if block:
+        href = re.search(r'href="([^"]+)"', block.group(1))
+        if href:
+            return href.group(1)
+    meta = re.search(
+        r'<meta[^>]+http-equiv=["\']?refresh["\']?[^>]+content=["\']?\d+;\s*url=([^\'">\s]+)',
+        html,
+        re.IGNORECASE,
+    )
+    if meta:
+        return meta.group(1)
+    return None
+
+
+def parse_page_content(html: str) -> str:
+    """Extract readable text from a Moodle page-module view page."""
+    block = re.search(
+        r'<div[^>]+class="[^"]*generalbox[^"]*"[^>]*>(.*?)</div\s*>',
+        html,
+        re.DOTALL | re.IGNORECASE,
+    )
+    if not block:
+        block = re.search(
+            r'<div[^>]+role="main"[^>]*>(.*?)</div\s*>',
+            html,
+            re.DOTALL | re.IGNORECASE,
+        )
+    raw = block.group(1) if block else html
+    return strip_html(raw)
+
+
 def parse_assignment_page(html: str) -> tuple[str, str, dict | None]:
     """Extract grade, submission status, and comment config from an assignment page.
 

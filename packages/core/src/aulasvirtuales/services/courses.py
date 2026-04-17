@@ -31,6 +31,7 @@ class CoursesService:
                 name=cm["name"],
                 module=cm["module"],
                 url=cm.get("url"),
+                description=cm.get("description") or None,
             )
             modules_by_section.setdefault(cm["sectionid"], []).append(resource)
 
