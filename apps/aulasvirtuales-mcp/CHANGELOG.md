@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/alexFiorenza/aulasvirtuales-toolkit/compare/aulasvirtuales-mcp-v0.5.2...aulasvirtuales-mcp-v0.6.0) (2026-04-17)
+
+
+### Features
+
+* **core:** swap pdf parser to pdf-inspector and add ocr classifier gate ([beadb87](https://github.com/alexFiorenza/aulasvirtuales-toolkit/commit/beadb87eb058815079978fe0c60bdbce04f738f6))
+
 ## [0.5.2](https://github.com/alexFiorenza/aulasvirtuales-toolkit/compare/aulasvirtuales-mcp-v0.5.1...aulasvirtuales-mcp-v0.5.2) (2026-04-16)
 
 
